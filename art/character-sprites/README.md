@@ -17,4 +17,4 @@ DXT5 使用有 Alpha 加權的 cluster-fit 編碼並存為 DDS。ASTC 使用 4×
 
 [角色底稿與提示詞紀錄](PROMPTS.md)
 
-[新增兵種與特效](EXPANDED-ROSTER.md)
+[新增兵種動畫](EXPANDED-ROSTER.md)

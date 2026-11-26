@@ -19,13 +19,6 @@
     "y": 0.2,
     "origin": "bottom-left"
   },
-  "actionAnchorOrigin": "top-left-in-frame",
-  "rotatableEffectsPointRight": [
-    "Arrow",
-    "FlameWave",
-    "SwordArc",
-    "AxeArc"
-  ],
   "characters": [
     {
       "id": "shieldman",
@@ -41,50 +34,7 @@
         "file": "art/character-sprites/shieldman/Shieldman_Bash.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 162,
-            "y": 115
-          },
-          "NE": {
-            "x": 164,
-            "y": 128
-          },
-          "E": {
-            "x": 194,
-            "y": 134
-          },
-          "SE": {
-            "x": 168,
-            "y": 141
-          },
-          "S": {
-            "x": 153,
-            "y": 142
-          },
-          "SW": {
-            "x": 134,
-            "y": 141
-          },
-          "W": {
-            "x": 66,
-            "y": 135
-          },
-          "NW": {
-            "x": 73,
-            "y": 128
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "impact",
-            "assets": [
-              "ShieldImpact"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -101,53 +51,7 @@
         "file": "art/character-sprites/bow-recruit/BowRecruit_Shoot.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 93,
-            "y": 96
-          },
-          "NE": {
-            "x": 152,
-            "y": 96
-          },
-          "E": {
-            "x": 187,
-            "y": 101
-          },
-          "SE": {
-            "x": 182,
-            "y": 107
-          },
-          "S": {
-            "x": 146,
-            "y": 108
-          },
-          "SW": {
-            "x": 87,
-            "y": 108
-          },
-          "W": {
-            "x": 87,
-            "y": 104
-          },
-          "NW": {
-            "x": 81,
-            "y": 102
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "projectile",
-            "assets": [
-              "Arrow"
-            ],
-            "onImpact": [
-              "ArrowImpact"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -160,60 +64,11 @@
         "loop": true
       },
       "action": {
-        "label": "開炮",
+        "label": "舉炮與後坐",
         "file": "art/character-sprites/cannoneer/Cannoneer_Fire.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 99,
-            "y": 100
-          },
-          "NE": {
-            "x": 159,
-            "y": 93
-          },
-          "E": {
-            "x": 173,
-            "y": 94
-          },
-          "SE": {
-            "x": 162,
-            "y": 98
-          },
-          "S": {
-            "x": 154,
-            "y": 102
-          },
-          "SW": {
-            "x": 96,
-            "y": 98
-          },
-          "W": {
-            "x": 89,
-            "y": 94
-          },
-          "NW": {
-            "x": 99,
-            "y": 93
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "projectile",
-            "assets": [
-              "Cannonball"
-            ],
-            "onLaunch": [
-              "CannonFlash"
-            ],
-            "onImpact": [
-              "CannonExplosion"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -230,50 +85,7 @@
         "file": "art/character-sprites/footman/Footman_Slash.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 154,
-            "y": 119
-          },
-          "NE": {
-            "x": 143,
-            "y": 119
-          },
-          "E": {
-            "x": 147,
-            "y": 129
-          },
-          "SE": {
-            "x": 166,
-            "y": 135
-          },
-          "S": {
-            "x": 110,
-            "y": 136
-          },
-          "SW": {
-            "x": 85,
-            "y": 134
-          },
-          "W": {
-            "x": 85,
-            "y": 124
-          },
-          "NW": {
-            "x": 85,
-            "y": 119
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "impact",
-            "assets": [
-              "SwordArc"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -286,54 +98,11 @@
         "loop": true
       },
       "action": {
-        "label": "舉旗鼓舞",
+        "label": "舉旗",
         "file": "art/character-sprites/standard-bearer/StandardBearer_Rally.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 128,
-            "y": 196
-          },
-          "NE": {
-            "x": 142,
-            "y": 198
-          },
-          "E": {
-            "x": 146,
-            "y": 205
-          },
-          "SE": {
-            "x": 142,
-            "y": 212
-          },
-          "S": {
-            "x": 128,
-            "y": 214
-          },
-          "SW": {
-            "x": 114,
-            "y": 212
-          },
-          "W": {
-            "x": 110,
-            "y": 205
-          },
-          "NW": {
-            "x": 114,
-            "y": 198
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "rally",
-            "assets": [
-              "RallyAura"
-            ],
-            "placement": "caster-ground"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -346,54 +115,11 @@
         "loop": true
       },
       "action": {
-        "label": "治療",
+        "label": "遞出藥瓶",
         "file": "art/character-sprites/field-medic/FieldMedic_Heal.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 159,
-            "y": 98
-          },
-          "NE": {
-            "x": 173,
-            "y": 99
-          },
-          "E": {
-            "x": 176,
-            "y": 103
-          },
-          "SE": {
-            "x": 166,
-            "y": 105
-          },
-          "S": {
-            "x": 117,
-            "y": 106
-          },
-          "SW": {
-            "x": 99,
-            "y": 103
-          },
-          "W": {
-            "x": 82,
-            "y": 103
-          },
-          "NW": {
-            "x": 90,
-            "y": 101
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "heal",
-            "assets": [
-              "HealPulse"
-            ],
-            "placement": "target"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -410,50 +136,7 @@
         "file": "art/character-sprites/light-cavalry/LightCavalry_Charge.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 160,
-            "y": 247
-          },
-          "NE": {
-            "x": 174,
-            "y": 249
-          },
-          "E": {
-            "x": 178,
-            "y": 256
-          },
-          "SE": {
-            "x": 174,
-            "y": 263
-          },
-          "S": {
-            "x": 160,
-            "y": 265
-          },
-          "SW": {
-            "x": 146,
-            "y": 263
-          },
-          "W": {
-            "x": 142,
-            "y": 256
-          },
-          "NW": {
-            "x": 146,
-            "y": 249
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "charge",
-            "assets": [
-              "ChargeDust"
-            ],
-            "placement": "caster-ground"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -466,54 +149,11 @@
         "loop": true
       },
       "action": {
-        "label": "砸地震波",
+        "label": "重鎚砸地",
         "file": "art/character-sprites/hammer-guard/HammerGuard_Slam.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 128,
-            "y": 196
-          },
-          "NE": {
-            "x": 142,
-            "y": 198
-          },
-          "E": {
-            "x": 146,
-            "y": 205
-          },
-          "SE": {
-            "x": 142,
-            "y": 212
-          },
-          "S": {
-            "x": 128,
-            "y": 214
-          },
-          "SW": {
-            "x": 114,
-            "y": 212
-          },
-          "W": {
-            "x": 110,
-            "y": 205
-          },
-          "NW": {
-            "x": 114,
-            "y": 198
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "area",
-            "assets": [
-              "HammerWave"
-            ],
-            "placement": "caster-ground"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -530,50 +170,7 @@
         "file": "art/character-sprites/axe-guard/AxeGuard_Sweep.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 151,
-            "y": 92
-          },
-          "NE": {
-            "x": 151,
-            "y": 89
-          },
-          "E": {
-            "x": 192,
-            "y": 96
-          },
-          "SE": {
-            "x": 192,
-            "y": 106
-          },
-          "S": {
-            "x": 156,
-            "y": 114
-          },
-          "SW": {
-            "x": 133,
-            "y": 119
-          },
-          "W": {
-            "x": 54,
-            "y": 107
-          },
-          "NW": {
-            "x": 60,
-            "y": 101
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "area",
-            "assets": [
-              "AxeArc"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -586,63 +183,11 @@
         "loop": true
       },
       "action": {
-        "label": "召喚冰晶",
+        "label": "冰霜施法",
         "file": "art/character-sprites/frost-mage/FrostMage_Cast.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 128,
-            "y": 85
-          },
-          "NE": {
-            "x": 178,
-            "y": 85
-          },
-          "E": {
-            "x": 170,
-            "y": 111
-          },
-          "SE": {
-            "x": 167,
-            "y": 157
-          },
-          "S": {
-            "x": 128,
-            "y": 166
-          },
-          "SW": {
-            "x": 101,
-            "y": 151
-          },
-          "W": {
-            "x": 81,
-            "y": 99
-          },
-          "NW": {
-            "x": 67,
-            "y": 91
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 2,
-            "kind": "telegraph",
-            "assets": [
-              "FrostWarning"
-            ],
-            "placement": "target-ground"
-          },
-          {
-            "frameIndex": 6,
-            "kind": "area",
-            "assets": [
-              "FrostBurst",
-              "FrostGround"
-            ],
-            "placement": "target-ground"
-          }
-        ]
+        "keyFrameIndex": 6
       }
     },
     {
@@ -655,201 +200,12 @@
         "loop": true
       },
       "action": {
-        "label": "直線火浪",
+        "label": "火焰施法",
         "file": "art/character-sprites/flame-mage/FlameMage_Cast.png",
         "fps": 16,
         "loop": false,
-        "anchors": {
-          "N": {
-            "x": 183,
-            "y": 113
-          },
-          "NE": {
-            "x": 185,
-            "y": 117
-          },
-          "E": {
-            "x": 183,
-            "y": 122
-          },
-          "SE": {
-            "x": 170,
-            "y": 131
-          },
-          "S": {
-            "x": 122,
-            "y": 139
-          },
-          "SW": {
-            "x": 73,
-            "y": 126
-          },
-          "W": {
-            "x": 63,
-            "y": 125
-          },
-          "NW": {
-            "x": 62,
-            "y": 123
-          }
-        },
-        "events": [
-          {
-            "frameIndex": 6,
-            "kind": "traveling-area",
-            "assets": [
-              "FlameWave"
-            ],
-            "placement": "action-anchor"
-          }
-        ]
+        "keyFrameIndex": 6
       }
-    }
-  ],
-  "effects": [
-    {
-      "id": "Arrow",
-      "file": "art/effects/Arrow.png",
-      "frameWidth": 96,
-      "frameHeight": 32,
-      "frames": 1,
-      "fps": null,
-      "layout": "single"
-    },
-    {
-      "id": "Cannonball",
-      "file": "art/effects/Cannonball.png",
-      "frameWidth": 48,
-      "frameHeight": 48,
-      "frames": 1,
-      "fps": null,
-      "layout": "single"
-    },
-    {
-      "id": "ArrowImpact",
-      "file": "art/effects/ArrowImpact.png",
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "frames": 8,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "CannonFlash",
-      "file": "art/effects/CannonFlash.png",
-      "frameWidth": 96,
-      "frameHeight": 96,
-      "frames": 6,
-      "fps": 24,
-      "layout": "horizontal"
-    },
-    {
-      "id": "CannonExplosion",
-      "file": "art/effects/CannonExplosion.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "FrostWarning",
-      "file": "art/effects/FrostWarning.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 8,
-      "fps": 16,
-      "layout": "horizontal"
-    },
-    {
-      "id": "FrostBurst",
-      "file": "art/effects/FrostBurst.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "FrostGround",
-      "file": "art/effects/FrostGround.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 10,
-      "layout": "horizontal"
-    },
-    {
-      "id": "FlameWave",
-      "file": "art/effects/FlameWave.png",
-      "frameWidth": 128,
-      "frameHeight": 96,
-      "frames": 10,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "SwordArc",
-      "file": "art/effects/SwordArc.png",
-      "frameWidth": 96,
-      "frameHeight": 96,
-      "frames": 8,
-      "fps": 24,
-      "layout": "horizontal"
-    },
-    {
-      "id": "AxeArc",
-      "file": "art/effects/AxeArc.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 8,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "ShieldImpact",
-      "file": "art/effects/ShieldImpact.png",
-      "frameWidth": 96,
-      "frameHeight": 96,
-      "frames": 8,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "HammerWave",
-      "file": "art/effects/HammerWave.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 20,
-      "layout": "horizontal"
-    },
-    {
-      "id": "RallyAura",
-      "file": "art/effects/RallyAura.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 16,
-      "layout": "horizontal"
-    },
-    {
-      "id": "HealPulse",
-      "file": "art/effects/HealPulse.png",
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "frames": 10,
-      "fps": 16,
-      "layout": "horizontal"
-    },
-    {
-      "id": "ChargeDust",
-      "file": "art/effects/ChargeDust.png",
-      "frameWidth": 96,
-      "frameHeight": 96,
-      "frames": 8,
-      "fps": 16,
-      "layout": "horizontal"
     }
   ]
 }
