@@ -1,0 +1,20 @@
+fileFormatVersion: 2
+guid: 8db198e5d6224ffc921a16909c3a8750
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Noto Sans TC
+  - Kingdom Stroke TC
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: a6af2fe272234bb19f4a3ac62441e926, type: 3}
+  customCharacters:
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1

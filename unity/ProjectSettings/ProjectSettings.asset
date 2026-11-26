@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 28
+  productGUID: b04f8e8fd31649a582eac5dd4df7c92c
+  companyName: Kingdom Rhapsody
+  productName: Kingdom Rhapsody
+  defaultScreenOrientation: 0
+  defaultScreenWidth: 800
+  defaultScreenHeight: 1254
+  defaultIsNativeResolution: 0
+  fullscreenMode: 3
+  resizableWindow: 1
+  activeInputHandler: 0

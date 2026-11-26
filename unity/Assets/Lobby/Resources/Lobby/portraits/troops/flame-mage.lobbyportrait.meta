@@ -1,0 +1,7 @@
+fileFormatVersion: 2
+guid: 5644c08e4dc4d2be7b5628cc5ab92f55
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  script: {fileID: 11500000, guid: f19b541c01b64971b0c14cac0e1a948a, type: 3}

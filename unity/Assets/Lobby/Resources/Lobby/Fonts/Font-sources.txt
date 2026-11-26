@@ -1,0 +1,4 @@
+Noto Sans TC Regular subset from https://github.com/nathanialf/ico-pc/tree/main/port/assets/fonts under OFL 1.1.
+Kingdom Stroke TC is a fallback under the unmodified Arphic Public License.
+On 2026-11-26, Hanzi Writer outlines were converted into TrueType and two glyphs were recomposed.
+Source: https://github.com/chanind/hanzi-writer-data
