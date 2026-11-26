@@ -100,7 +100,7 @@ namespace KingdomRhapsody
             audioSource.mute = !loadout.soundEnabled;
             clips = new[] { null, Clip("tap"), Clip("back"), Clip("confirm"), Clip("deploy") };
 
-            if (FindFirstObjectByType<EventSystem>() == null)
+            if (FindAnyObjectByType<EventSystem>() == null)
             {
                 var events = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
                 events.transform.SetParent(transform, false);

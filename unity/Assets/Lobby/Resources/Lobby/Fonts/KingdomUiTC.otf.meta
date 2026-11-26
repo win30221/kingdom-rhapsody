@@ -8,11 +8,8 @@ TrueTypeFontImporter:
   characterSpacing: 0
   characterPadding: 1
   includeFontData: 1
-  fontNames:
-  - Noto Sans TC
-  - Kingdom Stroke TC
-  fallbackFontReferences:
-  - {fileID: 12800000, guid: a6af2fe272234bb19f4a3ac62441e926, type: 3}
+  fontNames: []
+  fallbackFontReferences: []
   customCharacters:
   fontRenderingMode: 0
   ascentCalculationMode: 1

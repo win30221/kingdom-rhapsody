@@ -1,4 +1,4 @@
-Noto Sans TC Regular subset from https://github.com/nathanialf/ico-pc/tree/main/port/assets/fonts under OFL 1.1.
-Kingdom Stroke TC is a fallback under the unmodified Arphic Public License.
-On 2026-11-26, Hanzi Writer outlines were converted into TrueType and two glyphs were recomposed.
-Source: https://github.com/chanind/hanzi-writer-data
+KingdomUiTC.otf is a Traditional Chinese UI subset of Noto Sans CJK TC Bold.
+Source: https://github.com/notofonts/noto-cjk
+The subset uses a distinct font family name and is distributed under OFL 1.1.
+If new labels need additional glyphs, regenerate the subset from the same source font.
