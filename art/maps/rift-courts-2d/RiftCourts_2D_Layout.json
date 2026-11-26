@@ -1,0 +1,197 @@
+{
+  "mapId": "RiftCourts",
+  "displayName": "斷崖雙庭",
+  "edition": "2D",
+  "revision": 1,
+  "coordinates": {
+    "plane": "XY",
+    "right": "+X",
+    "up": "+Y",
+    "origin": "Art center"
+  },
+  "artwork": {
+    "png": "RiftCourts_2D.png",
+    "webp": "RiftCourts_2D.webp",
+    "width": 1056,
+    "height": 1440,
+    "pixelsPerUnit": 30,
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "bounds": {
+      "xMin": -17.6,
+      "xMax": 17.6,
+      "yMin": -24,
+      "yMax": 24
+    }
+  },
+  "camera": {
+    "center": [
+      0,
+      0
+    ],
+    "orthographicSize": 24,
+    "visibleHeight": 48,
+    "testViewports": [
+      {
+        "label": "9:21",
+        "ratio": [
+          9,
+          21
+        ],
+        "visibleWidth": 20.571429
+      },
+      {
+        "label": "9:19.5",
+        "ratio": [
+          6,
+          13
+        ],
+        "visibleWidth": 22.153846
+      },
+      {
+        "label": "9:16",
+        "ratio": [
+          9,
+          16
+        ],
+        "visibleWidth": 27
+      }
+    ]
+  },
+  "teams": {
+    "red": {
+      "court": {
+        "xMin": -9.1,
+        "xMax": 9.1,
+        "yMin": 5.7,
+        "yMax": 21.45
+      },
+      "deployment": {
+        "xMin": -8.65,
+        "xMax": 8.65,
+        "yMin": 8.1,
+        "yMax": 20.6
+      },
+      "princeSpawn": [
+        0,
+        15
+      ],
+      "princeRoamHint": {
+        "xMin": -7.7,
+        "xMax": 7.7,
+        "yMin": 8.7,
+        "yMax": 20
+      },
+      "guards": {
+        "Spearman": [
+          7,
+          7.24
+        ],
+        "Archer": [
+          -7,
+          7.24
+        ]
+      }
+    },
+    "blue": {
+      "court": {
+        "xMin": -9.1,
+        "xMax": 9.1,
+        "yMin": -21.45,
+        "yMax": -5.7
+      },
+      "deployment": {
+        "xMin": -8.65,
+        "xMax": 8.65,
+        "yMin": -20.6,
+        "yMax": -8.1
+      },
+      "princeSpawn": [
+        0,
+        -15
+      ],
+      "princeRoamHint": {
+        "xMin": -7.7,
+        "xMax": 7.7,
+        "yMin": -20,
+        "yMax": -8.7
+      },
+      "guards": {
+        "Spearman": [
+          -7,
+          -7.24
+        ],
+        "Archer": [
+          7,
+          -7.24
+        ]
+      }
+    }
+  },
+  "landings": [
+    {
+      "xMin": -2.08,
+      "xMax": 2.08,
+      "yMin": -5.7,
+      "yMax": -3.2
+    },
+    {
+      "xMin": -2.08,
+      "xMax": 2.08,
+      "yMin": 3.2,
+      "yMax": 5.7
+    }
+  ],
+  "bridges": {
+    "west": {
+      "xMin": -8.25,
+      "xMax": -5.85,
+      "yMin": -5.7,
+      "yMax": 5.7
+    },
+    "centre": {
+      "xMin": -1.9,
+      "xMax": 1.9,
+      "yMin": -3.2,
+      "yMax": 3.2
+    },
+    "east": {
+      "xMin": 5.85,
+      "xMax": 8.25,
+      "yMin": -5.7,
+      "yMax": 5.7
+    }
+  },
+  "trap": {
+    "location": "centre",
+    "area": {
+      "xMin": -1.9,
+      "xMax": 1.9,
+      "yMin": -2.5,
+      "yMax": 2.5
+    },
+    "phases": [
+      {
+        "state": "safe",
+        "seconds": 3
+      },
+      {
+        "state": "warning",
+        "seconds": 1
+      },
+      {
+        "state": "active",
+        "seconds": 2
+      }
+    ],
+    "affects": [
+      "ground_soldier"
+    ],
+    "exempt": [
+      "prince",
+      "flying_unit"
+    ]
+  }
+}
