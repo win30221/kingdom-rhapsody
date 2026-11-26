@@ -40,7 +40,6 @@ namespace KingdomRhapsody
         private Font font;
         private Canvas canvas;
         private Image background;
-        private AspectRatioFitter backgroundFit;
         private CanvasGroup pages;
         private CanvasGroup overlay;
         private RectTransform viewport;
@@ -151,8 +150,8 @@ namespace KingdomRhapsody
             RectTransform picture = Stretch(root.transform, "Background");
             background = picture.gameObject.AddComponent<Image>();
             background.raycastTarget = false;
-            backgroundFit = picture.gameObject.AddComponent<AspectRatioFitter>();
-            backgroundFit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            // Stretch the background on both axes; foreground UI keeps its aspect ratio.
+            background.preserveAspect = false;
             RectTransform screens = Stretch(root.transform, "Pages");
             pages = screens.gameObject.AddComponent<CanvasGroup>();
             viewport = Box(screens, "SafeArea", new Rect(Vector2.zero, DesignSize));
@@ -320,8 +319,6 @@ namespace KingdomRhapsody
         private void Backdrop(string id)
         {
             background.sprite = Sprite("backgrounds/" + id);
-            if (background.sprite != null)
-                backgroundFit.aspectRatio = background.sprite.rect.width / background.sprite.rect.height;
         }
 
         private void RefreshGuards()
