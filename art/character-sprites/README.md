@@ -16,3 +16,5 @@
 DXT5 使用有 Alpha 加權的 cluster-fit 編碼並存為 DDS。ASTC 使用 4×4 sRGB 編碼並存為含 16 位元組標頭的 ASTC 檔。兩者的尺寸、格線和 Alpha 通道均沿用 PNG，資料只含基礎層。Unity 可從透明 PNG 切格，並依發佈平台在匯入時選擇壓縮格式。DDS 和 ASTC 收錄獨立編碼後的貼圖資料，WebGL 整包大小需以打包成品量測。 [Arm ASTC 檔案格式](https://github.com/ARM-software/astc-encoder/blob/main/Docs/FileFormat.md)
 
 [角色底稿與提示詞紀錄](PROMPTS.md)
+
+[新增兵種與特效](EXPANDED-ROSTER.md)
