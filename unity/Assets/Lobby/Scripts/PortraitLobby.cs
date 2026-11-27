@@ -19,8 +19,9 @@ namespace KingdomRhapsody
         private const float HeaderHeight = 248f;
         private const float LobbyFooterHeight = 648f;
         private const float FormationHeight = 685f;
-        private const float DeckFooterHeight = 185f;
-        private const float DeckContentHeight = 1116f;
+        private const float DeckIdleFooterHeight = 40f;
+        private const float DeckReplaceFooterHeight = 156f;
+        private const float DeckContentHeight = 1210f;
         private const float MiddlePadding = 8f;
         // Formation-local coordinates keep the three characters on a shared ground line.
         private static readonly Rect LeftPosition = new Rect(77, 125, 306, 520);
@@ -63,6 +64,8 @@ namespace KingdomRhapsody
         private RectTransform formation;
         private RectTransform deck;
         private RectTransform deckContent;
+        private RectTransform deckMiddle;
+        private RectTransform deckFooter;
         private RectTransform guardDialog;
         private RectTransform soundDialog;
         private RectTransform deployDialog;
@@ -269,8 +272,8 @@ namespace KingdomRhapsody
                 opticalOffsetX: .08f);
             Anchor((RectTransform)backToLobby.transform, new Vector2(0f, 1f), new Vector2(33f, -52f));
 
-            RectTransform middle = MiddleRegion(deck, "CardRegion", HeaderHeight, DeckFooterHeight);
-            deckContent = DesignGroup(middle, "CardContent", new Vector2(.5f, .5f), DeckContentHeight);
+            deckMiddle = MiddleRegion(deck, "CardRegion", HeaderHeight, DeckIdleFooterHeight);
+            deckContent = DesignGroup(deckMiddle, "CardContent", new Vector2(.5f, .5f), DeckContentHeight);
             Picture(deckContent, "DeckPanel", "frames/stone-panel", new Rect(65, 27, 870, 625), true);
             Header(deckContent, "DeckHeader", "出戰牌組", new Rect(287, 0, 426, 103));
             Label(deckContent, "DeckCount", Roster.DeckSize + "/" + Roster.DeckSize, new Rect(789, 45, 94, 60), 36, Ivory);
@@ -284,17 +287,29 @@ namespace KingdomRhapsody
                     () => SelectDeckSlot(slot), Cue.Tap);
             }
 
-            Picture(deckContent, "ReservesPanel", "frames/stone-panel", new Rect(65, 732, 870, 384), true);
-            Header(deckContent, "ReservesHeader", "兵種收藏", new Rect(287, 701, 426, 103));
+            // Give the stone border its own space; center the cards inside the
+            // usable area below the title instead of resting them on the frame.
+            Rect reservePanel = new Rect(65, 748, 870, 462);
+            Rect reserveHeader = new Rect(287, 720, 426, 103);
+            Picture(deckContent, "ReservesPanel", "frames/stone-panel", reservePanel, true);
+            Header(deckContent, "ReservesHeader", "兵種收藏", reserveHeader);
             reserveCards = new Card[Roster.Troops.Length - Roster.DeckSize];
+            const float reserveCardWidth = 208f;
+            const float reserveCardHeight = 270f;
+            const float reserveGap = 34f;
+            const float reserveBottomInset = 33f;
+            float rowWidth = reserveCards.Length * reserveCardWidth + Mathf.Max(0, reserveCards.Length - 1) * reserveGap;
+            float rowX = reservePanel.center.x - rowWidth * .5f;
+            float rowY = (reserveHeader.yMax + reservePanel.yMax - reserveBottomInset - reserveCardHeight) * .5f;
             for (int i = 0; i < reserveCards.Length; i++)
             {
                 int slot = i;
-                reserveCards[i] = MakeCard(deckContent, "Reserve" + (i + 1), new Rect(170 + i * 222, 810, 216, 280), 38,
+                reserveCards[i] = MakeCard(deckContent, "Reserve" + (i + 1),
+                    new Rect(rowX + i * (reserveCardWidth + reserveGap), rowY, reserveCardWidth, reserveCardHeight), 36,
                     () => SelectReserve(slot), Cue.Tap);
             }
-            RectTransform footer = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckFooterHeight);
-            replaceBar = Box(footer, "ReplacePrompt", new Rect(50, 0, 900, 140));
+            deckFooter = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckIdleFooterHeight);
+            replaceBar = Box(deckFooter, "ReplacePrompt", new Rect(50, 0, 900, 140));
             replaceHint = Label(replaceBar, "Hint", "", new Rect(0, 0, 620, 132), 38, Ivory);
             cancelReplace = TextButton(replaceBar, "CancelReplace", "取消", "buttons/secondary-blue",
                 new Rect(650, 18, 245, 104), 44, Gold, CancelReplacement, Cue.Back, out _);
@@ -530,6 +545,7 @@ namespace KingdomRhapsody
                 card.Button.interactable = !replacing;
             }
             replaceBar.gameObject.SetActive(replacing);
+            LayoutDeckRegions();
             if (replacing)
                 SetLabelValue(replaceHint, "選擇要換下的卡：" + Roster.Name(pendingTroop));
             UpdateDeckEffects();
@@ -830,10 +846,20 @@ namespace KingdomRhapsody
             Vector2 safeSize = safe.size / pixelsPerUnit;
             viewport.sizeDelta = safeSize;
             FitMiddle(formation, safeSize.y - HeaderHeight - LobbyFooterHeight);
-            FitMiddle(deckContent, safeSize.y - HeaderHeight - DeckFooterHeight);
+            LayoutDeckRegions();
 
             // Modal artwork retains its fixed design canvas and remains centered.
             Center(dialogViewport, anchor, fit);
+        }
+
+        private void LayoutDeckRegions()
+        {
+            // Only replacement mode needs a permanent instruction/cancel row.
+            // In ordinary browsing, reclaim the unused footer for the card area.
+            float footerHeight = pendingTroop == null ? DeckIdleFooterHeight : DeckReplaceFooterHeight;
+            deckMiddle.offsetMin = new Vector2(0f, footerHeight);
+            deckFooter.sizeDelta = new Vector2(DesignSize.x, footerHeight);
+            FitMiddle(deckContent, viewport.rect.height - HeaderHeight - footerHeight);
         }
 
         private static Rect VisibleArtworkSafeArea(Vector2Int screen, Rect safe, Sprite art)
