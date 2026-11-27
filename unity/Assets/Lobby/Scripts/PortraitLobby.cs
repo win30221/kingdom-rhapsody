@@ -38,6 +38,9 @@ namespace KingdomRhapsody
             internal Image Check;
             internal Text Label;
             internal Rect PortraitBounds;
+            internal RectTransform Visual;
+            internal CanvasGroup VisualGroup;
+            internal Outline Glow;
         }
 
         private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
@@ -45,6 +48,10 @@ namespace KingdomRhapsody
         private AudioSource audioSource;
         private AudioClip[] clips;
         private Font font;
+        private Font extendedFont;
+        private bool ownsExtendedFont;
+        private bool attemptedExtendedFont;
+        private bool warnedMissingGlyphs;
         private Canvas canvas;
         private Image background;
         private AspectRatioFitter backgroundFit;
@@ -64,7 +71,23 @@ namespace KingdomRhapsody
         private Button backToLobby;
         private Button soundButton;
         private Button departBack;
-        private Button swap;
+        private RectTransform cardActionLayer;
+        private RectTransform cardActionMenu;
+        private CanvasGroup cardActionFade;
+        private Button inspectCard;
+        private Button addCard;
+        private RectTransform replaceBar;
+        private Text replaceHint;
+        private Button cancelReplace;
+        private RectTransform troopDetail;
+        private Image detailPortrait;
+        private Text detailName;
+        private Text detailStatus;
+        private Text detailAction;
+        private Button detailBack;
+        private Button detailAdd;
+        private string detailTroop;
+        private readonly Vector3[] cardCorners = new Vector3[4];
         private GameObject priorFocus;
         private Image leftGuard;
         private Image rightGuard;
@@ -79,9 +102,12 @@ namespace KingdomRhapsody
         private Text guardTitle;
         private Text soundState;
         private Text deploySummary;
-        private Text swapLabel;
-        private int deckSlot = -1;
-        private string replacement;
+        private Card selectedCard;
+        private string selectedTroop;
+        private string pendingTroop;
+        private float actionOpened;
+        private int flashSlot = -1;
+        private float flashStarted;
         private bool editLeft;
         private Rect lastSafeArea;
         private Vector2Int lastScreenSize;
@@ -129,6 +155,8 @@ namespace KingdomRhapsody
         {
             if (canvas != null)
                 Destroy(canvas.gameObject);
+            if (ownsExtendedFont && extendedFont != null)
+                Destroy(extendedFont);
         }
 
         private static AudioClip Clip(string name) => Resources.Load<AudioClip>("Lobby/Sounds/" + name);
@@ -253,7 +281,7 @@ namespace KingdomRhapsody
                 int slot = i;
                 deckCards[i] = MakeCard(deckContent, "Deck" + (i + 1),
                     new Rect(111 + i % 4 * 199, 108 + i / 4 * 252, 181, 240), 31,
-                    () => { deckSlot = slot; RefreshDeck(); }, Cue.Tap);
+                    () => SelectDeckSlot(slot), Cue.Tap);
             }
 
             Picture(deckContent, "ReservesPanel", "frames/stone-panel", new Rect(65, 732, 870, 384), true);
@@ -263,11 +291,33 @@ namespace KingdomRhapsody
             {
                 int slot = i;
                 reserveCards[i] = MakeCard(deckContent, "Reserve" + (i + 1), new Rect(170 + i * 222, 810, 216, 280), 38,
-                    () => { replacement = reserveIds[slot]; RefreshDeck(); }, Cue.Tap);
+                    () => SelectReserve(slot), Cue.Tap);
             }
             RectTransform footer = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckFooterHeight);
-            swap = TextButton(footer, "ReplaceCardButton", "", "buttons/primary-gold",
-                new Rect(218, 0, 564, 140), 50, Ink, Replace, Cue.Confirm, out swapLabel);
+            replaceBar = Box(footer, "ReplacePrompt", new Rect(50, 0, 900, 140));
+            replaceHint = Label(replaceBar, "Hint", "", new Rect(0, 0, 620, 132), 38, Ivory);
+            cancelReplace = TextButton(replaceBar, "CancelReplace", "取消", "buttons/secondary-blue",
+                new Rect(650, 18, 245, 104), 44, Gold, CancelReplacement, Cue.Back, out _);
+            replaceBar.gameObject.SetActive(false);
+
+            // A transparent dismiss layer anchors two independent buttons to the chosen card.
+            // No permanent footer buttons, information panel or new baked UI artwork.
+            cardActionLayer = Stretch(deck, "CardActionLayer");
+            var outside = cardActionLayer.gameObject.AddComponent<Image>();
+            outside.color = Color.clear;
+            outside.raycastTarget = true;
+            var dismiss = cardActionLayer.gameObject.AddComponent<Button>();
+            dismiss.targetGraphic = outside;
+            dismiss.transition = Selectable.Transition.None;
+            dismiss.navigation = new Navigation { mode = Navigation.Mode.None };
+            dismiss.onClick.AddListener(() => { Play(Cue.Back); DismissCardActions(); });
+            cardActionMenu = Box(cardActionLayer, "CardActions", new Rect(0, 0, 436, 104));
+            cardActionFade = cardActionMenu.gameObject.AddComponent<CanvasGroup>();
+            inspectCard = TextButton(cardActionMenu, "InspectCard", "看資訊", "buttons/secondary-blue",
+                new Rect(0, 0, 208, 104), 40, Gold, InspectSelected, Cue.Tap, out _);
+            addCard = TextButton(cardActionMenu, "AddCard", "上陣", "buttons/primary-gold",
+                new Rect(228, 0, 208, 104), 44, Ink, AddSelected, Cue.Confirm, out _);
+            cardActionLayer.gameObject.SetActive(false);
         }
 
         private Card MakeCard(Transform parent, string name, Rect rect, int size, Action click, Cue cue)
@@ -275,10 +325,16 @@ namespace KingdomRhapsody
             var card = new Card();
             card.Button = MakeButton(parent, name, "frames/card-field", rect, click, cue, out RectTransform art, out Image field);
             field.color = new Color32(33, 48, 76, 255);
+            card.Visual = art;
+            card.VisualGroup = art.gameObject.AddComponent<CanvasGroup>();
             // Reserve space for the frame and the separate name plate.
             card.PortraitBounds = new Rect(rect.width * .14f, rect.height * .095f, rect.width * .72f, rect.height * .59f);
             card.Portrait = Picture(art, "Portrait", null, card.PortraitBounds);
             card.Frame = Picture(art, "Frame", "frames/card-gold", new Rect(0, 0, rect.width, rect.height));
+            card.Glow = card.Frame.gameObject.AddComponent<Outline>();
+            card.Glow.effectDistance = new Vector2(4f, -4f);
+            card.Glow.effectColor = new Color(1f, .75f, .18f, .8f);
+            card.Glow.enabled = false;
             card.Label = Label(art, "Name", "", new Rect(rect.width * .095f, rect.height * .77f,
                 rect.width * .81f, rect.height * .17f), size, Ivory);
             card.Check = Picture(art, "Check", "icons/check", new Rect(rect.width * .725f, rect.height * .10f,
@@ -325,10 +381,30 @@ namespace KingdomRhapsody
             departBack = TextButton(deployDialog, "ReturnButton", "返回", "buttons/secondary-blue",
                 new Rect(215, 324, 320, 100), 49, Gold, CloseDialog, Cue.Back, out _);
 
+            BuildTroopDetail();
             guardDialog.gameObject.SetActive(false);
             soundDialog.gameObject.SetActive(false);
             deployDialog.gameObject.SetActive(false);
             layer.gameObject.SetActive(false);
+        }
+
+        private void BuildTroopDetail()
+        {
+            troopDetail = Dialog("TroopDetail", "兵種資訊", new Rect(75, 220, 850, 1128), out _);
+            Picture(troopDetail, "CharacterStage", "frames/card-field", new Rect(55, 93, 740, 532)).color =
+                new Color32(28, 44, 75, 255);
+            Picture(troopDetail, "StageShadow", "frames/ground-shadow", new Rect(262, 568, 326, 48));
+            detailPortrait = Picture(troopDetail, "DetailPortrait", null, new Rect(98, 109, 654, 480));
+            detailName = Label(troopDetail, "TroopName", "", new Rect(48, 635, 754, 80), 60, Gold);
+            detailStatus = Label(troopDetail, "TroopStatus", "", new Rect(48, 710, 754, 60), 36, Ivory);
+            detailAction = Label(troopDetail, "RepresentativeAction", "", new Rect(52, 792, 746, 78), 40, Ivory);
+            Label(troopDetail, "StatsPending", "戰鬥數值尚未設定", new Rect(52, 874, 746, 55), 32,
+                new Color32(177, 198, 226, 255));
+            detailBack = TextButton(troopDetail, "DetailBack", "返回", "buttons/secondary-blue",
+                new Rect(78, 976, 330, 112), 46, Gold, CloseDialog, Cue.Back, out _);
+            detailAdd = TextButton(troopDetail, "DetailAdd", "上陣", "buttons/primary-gold",
+                new Rect(442, 976, 330, 112), 46, Ink, AddFromDetail, Cue.Confirm, out _);
+            troopDetail.gameObject.SetActive(false);
         }
 
         private RectTransform Dialog(string id, string name, Rect rect, out Text heading)
@@ -342,6 +418,7 @@ namespace KingdomRhapsody
 
         private void ShowLobby()
         {
+            ResetDeckInteraction();
             deck.gameObject.SetActive(false);
             home.gameObject.SetActive(true);
             Backdrop("castle-courtyard");
@@ -350,12 +427,10 @@ namespace KingdomRhapsody
 
         private void ShowDeck()
         {
-            deckSlot = -1;
-            replacement = null;
             home.gameObject.SetActive(false);
             deck.gameObject.SetActive(true);
             Backdrop("royal-armory");
-            RefreshDeck();
+            ResetDeckInteraction();
             Focus(backToLobby);
         }
 
@@ -424,35 +499,210 @@ namespace KingdomRhapsody
             CloseDialog();
         }
 
+        private void ResetDeckInteraction()
+        {
+            CloseCardActions();
+            pendingTroop = null;
+            flashSlot = -1;
+            RefreshDeck();
+        }
+
         private void RefreshDeck()
         {
             reserveIds = loadout.Reserves();
+            bool replacing = pendingTroop != null;
             for (int i = 0; i < deckCards.Length; i++)
             {
+                Card card = deckCards[i];
                 string id = loadout.deck[i];
-                SetCard(deckCards[i], "portraits/troops/" + id, Roster.Name(id),
-                    i == deckSlot ? "card-gold-selected" : "card-gold", false, fullBody: true);
+                SetCard(card, "portraits/troops/" + id, Roster.Name(id),
+                    replacing ? "card-gold-selected" : card == selectedCard ? "card-cyan-selected" : "card-gold",
+                    false, fullBody: true);
             }
             for (int i = 0; i < reserveCards.Length; i++)
             {
+                Card card = reserveCards[i];
                 string id = reserveIds[i];
-                bool selected = id == replacement;
-                SetCard(reserveCards[i], "portraits/troops/" + id, Roster.Name(id),
-                    selected ? "card-cyan-selected" : "card-gold", selected, fullBody: true);
+                bool selected = replacing ? id == pendingTroop : card == selectedCard;
+                SetCard(card, "portraits/troops/" + id, Roster.Name(id),
+                    selected ? "card-cyan-selected" : "card-gold", false, fullBody: true);
+                card.VisualGroup.alpha = replacing && !selected ? .42f : 1f;
+                card.Button.interactable = !replacing;
             }
-            swap.interactable = loadout.CanReplace(deckSlot, replacement);
-            swapLabel.text = swap.interactable ? "換上" + Roster.Name(replacement) :
-                deckSlot < 0 ? "選擇要換下的卡" : "選擇要換上的兵種";
+            replaceBar.gameObject.SetActive(replacing);
+            if (replacing)
+                SetLabelValue(replaceHint, "選擇要換下的卡：" + Roster.Name(pendingTroop));
+            UpdateDeckEffects();
         }
 
-        private void Replace()
+        private void SelectDeckSlot(int slot)
         {
-            if (!loadout.Replace(deckSlot, replacement))
+            if (pendingTroop == null)
+            {
+                OpenCardActions(deckCards[slot], loadout.deck[slot]);
                 return;
-            replacement = null;
+            }
+            if (!loadout.Replace(slot, pendingTroop))
+            {
+                CancelReplacement();
+                return;
+            }
+
+            // The second tap commits the exchange immediately, never a confirmation modal.
+            pendingTroop = null;
+            flashSlot = slot;
+            flashStarted = Time.unscaledTime;
             Save();
             RefreshDeck();
-            Focus(deckCards[deckSlot].Button);
+            Play(Cue.Confirm);
+            Focus(deckCards[slot].Button);
+        }
+
+        private void SelectReserve(int slot)
+        {
+            if (pendingTroop == null)
+                OpenCardActions(reserveCards[slot], reserveIds[slot]);
+        }
+
+        private bool IsReserve(string id) => loadout.CanReplace(0, id);
+
+        private void OpenCardActions(Card card, string id)
+        {
+            CloseCardActions();
+            selectedCard = card;
+            selectedTroop = id;
+            addCard.gameObject.SetActive(IsReserve(id));
+            actionOpened = Time.unscaledTime;
+            cardActionFade.alpha = 0f;
+            cardActionLayer.gameObject.SetActive(true);
+            cardActionLayer.SetAsLastSibling();
+            RefreshDeck();
+            Canvas.ForceUpdateCanvases();
+            LayoutCardActions();
+            Focus(inspectCard);
+        }
+
+        private void LayoutCardActions()
+        {
+            if (selectedCard == null || !cardActionLayer.gameObject.activeSelf)
+                return;
+            var tile = (RectTransform)selectedCard.Button.transform;
+            tile.GetWorldCorners(cardCorners);
+            Vector3 bottomLeft = cardActionLayer.InverseTransformPoint(cardCorners[0]);
+            Vector3 topRight = cardActionLayer.InverseTransformPoint(cardCorners[2]);
+            Rect safe = cardActionLayer.rect;
+            float width = addCard.gameObject.activeSelf ? 436f : 208f;
+            const float height = 104f;
+            const float gap = 10f;
+            const float margin = 16f;
+            float centerX = (bottomLeft.x + topRight.x) * .5f - safe.xMin;
+            float bottom = safe.yMax - bottomLeft.y;
+            float top = safe.yMax - topRight.y;
+            float x = Mathf.Clamp(centerX - width * .5f, margin,
+                Mathf.Max(margin, safe.width - width - margin));
+            bool below = bottom + gap + height <= safe.height - margin;
+            float y = below ? bottom + gap : top - gap - height;
+            float t = Mathf.Clamp01((Time.unscaledTime - actionOpened) / .14f);
+            float eased = 1f - (1f - t) * (1f - t);
+            y += (below ? -12f : 12f) * (1f - eased);
+            y = Mathf.Clamp(y, margin, Mathf.Max(margin, safe.height - height - margin));
+            Position(cardActionMenu, new Rect(x, y, width, height));
+            cardActionFade.alpha = eased;
+        }
+
+        private void CloseCardActions()
+        {
+            selectedCard = null;
+            selectedTroop = null;
+            cardActionLayer.gameObject.SetActive(false);
+        }
+
+        private void DismissCardActions()
+        {
+            Card origin = selectedCard;
+            CloseCardActions();
+            RefreshDeck();
+            if (origin != null)
+                Focus(origin.Button);
+        }
+
+        private void AddSelected()
+        {
+            string id = selectedTroop;
+            BeginReplacement(id);
+        }
+
+        private void BeginReplacement(string id)
+        {
+            if (!IsReserve(id))
+                return;
+            CloseCardActions();
+            pendingTroop = id;
+            flashSlot = -1;
+            RefreshDeck();
+            Focus(deckCards[0].Button);
+        }
+
+        private void CancelReplacement()
+        {
+            string id = pendingTroop;
+            pendingTroop = null;
+            RefreshDeck();
+            int index = Array.IndexOf(reserveIds, id);
+            if (index >= 0)
+                Focus(reserveCards[index].Button);
+        }
+
+        private void UpdateDeckEffects()
+        {
+            float now = Time.unscaledTime;
+            bool replacing = pendingTroop != null;
+            float flashTime = now - flashStarted;
+            if (flashSlot >= 0 && flashTime >= .35f)
+                flashSlot = -1;
+            for (int i = 0; i < deckCards.Length; i++)
+            {
+                Card card = deckCards[i];
+                bool flashing = flashSlot == i;
+                float wave = Mathf.Sin(now * 8f + i * .65f);
+                card.Visual.localRotation = replacing ? Quaternion.Euler(0f, 0f, 1.7f * wave) : Quaternion.identity;
+                card.Glow.enabled = replacing || flashing;
+                if (card.Glow.enabled)
+                {
+                    float alpha = replacing ? .52f + .30f * wave : Mathf.Clamp01(1f - flashTime / .35f);
+                    card.Glow.effectColor = new Color(1f, .78f, .22f, alpha);
+                }
+                card.Frame.color = flashing ? Color.Lerp(Color.white, Gold, Mathf.Clamp01(1f - flashTime / .35f)) : Color.white;
+            }
+        }
+
+        private void InspectSelected()
+        {
+            if (selectedCard == null || string.IsNullOrEmpty(selectedTroop))
+                return;
+            Card origin = selectedCard;
+            string id = selectedTroop;
+            CloseCardActions();
+            RefreshDeck();
+            Focus(origin.Button);
+
+            detailTroop = id;
+            bool reserve = IsReserve(id);
+            Fit(detailPortrait, CardPortrait("portraits/troops/" + id, true), new Rect(98, 109, 654, 480), true);
+            SetLabelValue(detailName, Roster.Name(id));
+            SetLabelValue(detailStatus, reserve ? "未上陣" : "已上陣");
+            SetLabelValue(detailAction, "代表動作：" + Roster.ActionName(id));
+            detailAdd.gameObject.SetActive(reserve);
+            Position((RectTransform)detailBack.transform,
+                reserve ? new Rect(78, 976, 330, 112) : new Rect(260, 976, 330, 112));
+            OpenDialog(troopDetail, detailBack);
+        }
+
+        private void AddFromDetail()
+        {
+            string id = detailTroop;
+            CloseDialog();
+            BeginReplacement(id);
         }
 
         private void ShowSound()
@@ -506,6 +756,8 @@ namespace KingdomRhapsody
             if (activeDialog == null)
                 return;
 
+            if (activeDialog == troopDetail)
+                detailTroop = null;
             activeDialog.gameObject.SetActive(false);
             activeDialog = null;
             overlay.gameObject.SetActive(false);
@@ -524,12 +776,27 @@ namespace KingdomRhapsody
             FitSafeArea();
             if (activeDialog != null)
                 overlay.alpha = Mathf.MoveTowards(overlay.alpha, 1f, Time.unscaledDeltaTime * 9f);
+            if (deck.gameObject.activeSelf)
+            {
+                LayoutCardActions();
+                UpdateDeckEffects();
+            }
             if (!Input.GetKeyDown(KeyCode.Escape))
                 return;
             if (activeDialog != null)
             {
                 Play(Cue.Back);
                 CloseDialog();
+            }
+            else if (cardActionLayer.gameObject.activeSelf)
+            {
+                Play(Cue.Back);
+                DismissCardActions();
+            }
+            else if (pendingTroop != null)
+            {
+                Play(Cue.Back);
+                CancelReplacement();
             }
             else if (deck.gameObject.activeSelf)
             {
@@ -718,11 +985,69 @@ namespace KingdomRhapsody
             rect.localScale = new Vector3(mirror ? -1f : 1f, 1f, 1f);
         }
 
+        private static bool SupportsText(Font candidate, string value)
+        {
+            if (candidate == null)
+                return false;
+            foreach (char ch in value)
+                if (!char.IsWhiteSpace(ch) && !candidate.HasCharacter(ch))
+                    return false;
+            return true;
+        }
+
+        private Font FontForText(string value)
+        {
+            if (SupportsText(font, value))
+                return font;
+            if (!attemptedExtendedFont)
+            {
+                attemptedExtendedFont = true;
+                extendedFont = Resources.Load<Font>("Lobby/Fonts/KingdomUiTCFull");
+                // The shipped legacy subset intentionally omits many new glyphs.
+                // An installed TC font is useful in the Editor/desktop; builds should
+                // include the extended subset produced by Prepare-LobbyFont.py.
+                if (extendedFont == null && Application.platform != RuntimePlatform.WebGLPlayer)
+                {
+                    try
+                    {
+                        string[] available = Font.GetOSInstalledFontNames();
+                        var candidates = new List<string>();
+                        foreach (string family in new[] { "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Heiti TC", "Arial Unicode MS" })
+                            if (Array.Exists(available, name => string.Equals(name, family, StringComparison.OrdinalIgnoreCase)))
+                                candidates.Add(family);
+                        if (candidates.Count > 0)
+                        {
+                            extendedFont = Font.CreateDynamicFontFromOSFont(candidates.ToArray(), 48);
+                            ownsExtendedFont = extendedFont != null;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning("Lobby font fallback unavailable: " + ex.Message);
+                    }
+                }
+            }
+            if (SupportsText(extendedFont, value))
+                return extendedFont;
+            if (!warnedMissingGlyphs)
+            {
+                warnedMissingGlyphs = true;
+                Debug.LogWarning("Lobby text needs additional Traditional Chinese glyphs. Generate KingdomUiTCFull.otf with tools/Prepare-LobbyFont.py.");
+            }
+            return font;
+        }
+
+        private void SetLabelValue(Text label, string value)
+        {
+            label.font = FontForText(value);
+            label.fontStyle = label.font == extendedFont && ownsExtendedFont ? FontStyle.Bold : FontStyle.Normal;
+            label.text = value;
+        }
+
         private Text Label(Transform parent, string id, string value, Rect rect, int size, Color color,
             TextAnchor alignment = TextAnchor.MiddleCenter)
         {
             var label = Box(parent, id, rect).gameObject.AddComponent<Text>();
-            label.font = font;
             label.fontSize = size;
             label.color = color;
             label.alignment = alignment;
@@ -730,7 +1055,7 @@ namespace KingdomRhapsody
             label.verticalOverflow = VerticalWrapMode.Overflow;
             label.supportRichText = false;
             label.raycastTarget = false;
-            label.text = value;
+            SetLabelValue(label, value);
             if (color != Ink)
             {
                 var outline = label.gameObject.AddComponent<Outline>();

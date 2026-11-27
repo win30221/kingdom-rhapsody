@@ -22,19 +22,19 @@ namespace KingdomRhapsody
     internal static class Roster
     {
         internal const int DeckSize = 8;
-        internal static readonly (string id, string name)[] Troops =
+        internal static readonly (string id, string name, string action)[] Troops =
         {
-            ("shieldman", "盾兵"),
-            ("bow-recruit", "新手弓手"),
-            ("cannoneer", "火炮槍兵"),
-            ("footman", "近戰小兵"),
-            ("hammer-guard", "重鎚兵"),
-            ("axe-guard", "巨斧兵"),
-            ("frost-mage", "冰霜術士"),
-            ("flame-mage", "火焰術士"),
-            ("standard-bearer", "軍旗手"),
-            ("field-medic", "醫官"),
-            ("light-cavalry", "輕騎兵")
+            ("shieldman", "盾兵", "盾擊"),
+            ("bow-recruit", "新手弓手", "射箭"),
+            ("cannoneer", "火炮槍兵", "舉炮與後坐"),
+            ("footman", "近戰小兵", "短劍揮砍"),
+            ("hammer-guard", "重鎚兵", "重鎚砸地"),
+            ("axe-guard", "巨斧兵", "橫掃"),
+            ("frost-mage", "冰霜術士", "冰霜施法"),
+            ("flame-mage", "火焰術士", "火焰施法"),
+            ("standard-bearer", "軍旗手", "舉旗"),
+            ("field-medic", "醫官", "遞出藥瓶"),
+            ("light-cavalry", "輕騎兵", "衝鋒")
         };
 
         internal static string Name(string id)
@@ -42,6 +42,14 @@ namespace KingdomRhapsody
             foreach (var troop in Troops)
                 if (troop.id == id)
                     return troop.name;
+            return "";
+        }
+
+        internal static string ActionName(string id)
+        {
+            foreach (var troop in Troops)
+                if (troop.id == id)
+                    return troop.action;
             return "";
         }
 
