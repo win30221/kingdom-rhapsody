@@ -68,6 +68,8 @@ namespace KingdomRhapsody
         private GameObject priorFocus;
         private Image leftGuard;
         private Image rightGuard;
+        private Image leftShadow;
+        private Image rightShadow;
         private Card leftTile;
         private Card rightTile;
         private Card[] guardOptions;
@@ -191,14 +193,17 @@ namespace KingdomRhapsody
             RectTransform middle = MiddleRegion(home, "CharacterRegion", HeaderHeight, LobbyFooterHeight);
             formation = DesignGroup(middle, "Formation", new Vector2(.5f, .5f), FormationHeight);
             // Bring the shadow cores up to the visible feet (the character sprites include transparent padding).
-            Picture(formation, "LeftShadow", "frames/ground-shadow", new Rect(91, 565, 273, 60));
-            Picture(formation, "RightShadow", "frames/ground-shadow", new Rect(636, 565, 266, 60));
-            Picture(formation, "PrinceShadow", "frames/ground-shadow", new Rect(302, 580, 394, 68));
+            leftShadow = Picture(formation, "LeftShadow", "frames/ground-shadow", new Rect(91, 565, 273, 60));
+            rightShadow = Picture(formation, "RightShadow", "frames/ground-shadow", new Rect(636, 565, 266, 60));
+            Sprite princeArt = Sprite("illustrations/characters/prince");
+            bool illustratedPrince = princeArt != null;
+            Picture(formation, "PrinceShadow", "frames/ground-shadow",
+                new Rect(302, illustratedPrince ? 614 : 580, 394, 68));
             leftGuard = Picture(formation, "LeftGuard", "characters/royal-spearman", LeftPosition);
             rightGuard = Picture(formation, "RightGuard", "characters/royal-crossbowman", RightPosition);
-            var princeRect = new Rect(258, 0, 484, 652);
-            Image prince = Picture(formation, "Prince", "characters/prince", princeRect);
-            Fit(prince, prince.sprite, princeRect, true);
+            var princeRect = illustratedPrince ? new Rect(235, 0, 530, 652) : new Rect(258, 0, 484, 652);
+            Image prince = Picture(formation, "Prince", null, princeRect);
+            Fit(prince, princeArt ?? Sprite("characters/prince"), princeRect, true);
 
             RectTransform footer = DesignGroup(home, "Footer", new Vector2(.5f, 0f), LobbyFooterHeight);
             Picture(footer, "GuardPanel", "frames/stone-panel", new Rect(50, 38, 900, 352), true);
@@ -280,7 +285,7 @@ namespace KingdomRhapsody
 
         private void SetCard(Card card, string art, string name, string frame, bool check)
         {
-            Fit(card.Portrait, Sprite(art), card.PortraitBounds, true);
+            Fit(card.Portrait, CardPortrait(art), card.PortraitBounds, true);
             card.Label.text = name;
             card.Frame.sprite = Sprite("frames/" + frame);
             card.Check.gameObject.SetActive(check);
@@ -364,16 +369,29 @@ namespace KingdomRhapsody
 
         private void RefreshGuards()
         {
-            RefreshGuard(leftGuard, leftTile, loadout.leftGuard, LeftPosition, true);
-            RefreshGuard(rightGuard, rightTile, loadout.rightGuard, RightPosition, false);
+            RefreshGuard(leftGuard, leftShadow, leftTile, loadout.leftGuard, LeftPosition, true);
+            RefreshGuard(rightGuard, rightShadow, rightTile, loadout.rightGuard, RightPosition, false);
         }
 
-        private void RefreshGuard(Image full, Card tile, RoyalGuard guard, Rect rect, bool left)
+        private void RefreshGuard(Image full, Image shadow, Card tile, RoyalGuard guard, Rect rect, bool left)
         {
             string id = Roster.SpriteId(guard);
             bool mirror = left && guard == RoyalGuard.Crossbowman;
-            Fit(full, Sprite("characters/" + id), rect, bottom: true, mirror: mirror);
-            Fit(tile.Portrait, Sprite("portraits/" + id), tile.PortraitBounds, mirror: mirror);
+            Sprite illustration = Sprite("illustrations/characters/" + id);
+            if (illustration != null)
+            {
+                // Wider, tightly cropped presentation art needs more room for its pose.
+                rect = new Rect(left ? 24 : 620, rect.y, 356, rect.height);
+                float shadowWidth = left ? 273f : 266f;
+                Position(shadow.rectTransform, new Rect(rect.center.x - shadowWidth * .5f,
+                    rect.yMax - 34f, shadowWidth, 60));
+            }
+            else
+            {
+                Position(shadow.rectTransform, left ? new Rect(91, 565, 273, 60) : new Rect(636, 565, 266, 60));
+            }
+            Fit(full, illustration ?? Sprite("characters/" + id), rect, bottom: true, mirror: mirror);
+            Fit(tile.Portrait, CardPortrait("portraits/" + id), tile.PortraitBounds, mirror: mirror);
             tile.Label.text = Roster.Name(guard);
         }
 
@@ -575,6 +593,16 @@ namespace KingdomRhapsody
             rect.anchorMin = rect.anchorMax = anchor;
             rect.anchoredPosition = Vector2.zero;
             rect.localScale = Vector3.one * fit;
+        }
+
+        // Dedicated presentation portraits are independent of the battle sprite sheets.
+        // Legacy assets remain usable until the optional illustration package is installed.
+        private Sprite CardPortrait(string legacyPath)
+        {
+            if (string.IsNullOrEmpty(legacyPath))
+                return null;
+            string id = legacyPath.Substring(legacyPath.LastIndexOf('/') + 1);
+            return Sprite("card-portraits/" + id) ?? Sprite(legacyPath);
         }
 
         private Sprite Sprite(string id)
