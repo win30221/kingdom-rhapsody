@@ -40,6 +40,7 @@ namespace KingdomRhapsody
         private Font font;
         private Canvas canvas;
         private Image background;
+        private AspectRatioFitter backgroundFit;
         private CanvasGroup pages;
         private CanvasGroup overlay;
         private RectTransform viewport;
@@ -147,11 +148,24 @@ namespace KingdomRhapsody
             scaler.referenceResolution = DesignSize;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
-            RectTransform picture = Stretch(root.transform, "Background");
+            RectTransform backdrop = Stretch(root.transform, "Background");
+            // A wider-than-art viewport shows black at the sides instead of cropping vertically.
+            var matte = backdrop.gameObject.AddComponent<Image>();
+            matte.color = Color.black;
+            matte.raycastTarget = false;
+
+            // Keep the full artwork height visible and reveal more of its width on wider screens.
+            RectTransform picture = Node(backdrop, "Artwork");
+            picture.anchorMin = new Vector2(.5f, 0f);
+            picture.anchorMax = new Vector2(.5f, 1f);
+            picture.pivot = new Vector2(.5f, .5f);
+            picture.sizeDelta = Vector2.zero;
+            picture.anchoredPosition = Vector2.zero;
             background = picture.gameObject.AddComponent<Image>();
             background.raycastTarget = false;
-            // Stretch the background on both axes; foreground UI keeps its aspect ratio.
-            background.preserveAspect = false;
+            background.preserveAspect = true;
+            backgroundFit = picture.gameObject.AddComponent<AspectRatioFitter>();
+            backgroundFit.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
             RectTransform screens = Stretch(root.transform, "Pages");
             pages = screens.gameObject.AddComponent<CanvasGroup>();
             viewport = Box(screens, "SafeArea", new Rect(Vector2.zero, DesignSize));
@@ -319,6 +333,9 @@ namespace KingdomRhapsody
         private void Backdrop(string id)
         {
             background.sprite = Sprite("backgrounds/" + id);
+            background.enabled = background.sprite != null;
+            if (background.sprite != null)
+                backgroundFit.aspectRatio = background.sprite.rect.width / background.sprite.rect.height;
         }
 
         private void RefreshGuards()
