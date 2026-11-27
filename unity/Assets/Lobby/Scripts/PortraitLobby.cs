@@ -190,9 +190,10 @@ namespace KingdomRhapsody
 
             RectTransform middle = MiddleRegion(home, "CharacterRegion", HeaderHeight, LobbyFooterHeight);
             formation = DesignGroup(middle, "Formation", new Vector2(.5f, .5f), FormationHeight);
-            Picture(formation, "LeftShadow", "frames/ground-shadow", new Rect(91, 610, 273, 60));
-            Picture(formation, "RightShadow", "frames/ground-shadow", new Rect(636, 610, 266, 60));
-            Picture(formation, "PrinceShadow", "frames/ground-shadow", new Rect(302, 617, 394, 68));
+            // Bring the shadow cores up to the visible feet (the character sprites include transparent padding).
+            Picture(formation, "LeftShadow", "frames/ground-shadow", new Rect(91, 565, 273, 60));
+            Picture(formation, "RightShadow", "frames/ground-shadow", new Rect(636, 565, 266, 60));
+            Picture(formation, "PrinceShadow", "frames/ground-shadow", new Rect(302, 580, 394, 68));
             leftGuard = Picture(formation, "LeftGuard", "characters/royal-spearman", LeftPosition);
             rightGuard = Picture(formation, "RightGuard", "characters/royal-crossbowman", RightPosition);
             var princeRect = new Rect(258, 0, 484, 652);
@@ -363,15 +364,16 @@ namespace KingdomRhapsody
 
         private void RefreshGuards()
         {
-            RefreshGuard(leftGuard, leftTile, loadout.leftGuard, LeftPosition);
-            RefreshGuard(rightGuard, rightTile, loadout.rightGuard, RightPosition);
+            RefreshGuard(leftGuard, leftTile, loadout.leftGuard, LeftPosition, true);
+            RefreshGuard(rightGuard, rightTile, loadout.rightGuard, RightPosition, false);
         }
 
-        private void RefreshGuard(Image full, Card tile, RoyalGuard guard, Rect rect)
+        private void RefreshGuard(Image full, Card tile, RoyalGuard guard, Rect rect, bool left)
         {
             string id = Roster.SpriteId(guard);
-            Fit(full, Sprite("characters/" + id), rect, true);
-            Fit(tile.Portrait, Sprite("portraits/" + id), tile.PortraitBounds);
+            bool mirror = left && guard == RoyalGuard.Crossbowman;
+            Fit(full, Sprite("characters/" + id), rect, bottom: true, mirror: mirror);
+            Fit(tile.Portrait, Sprite("portraits/" + id), tile.PortraitBounds, mirror: mirror);
             tile.Label.text = Roster.Name(guard);
         }
 
@@ -657,15 +659,24 @@ namespace KingdomRhapsody
             return image;
         }
 
-        private static void Fit(Image image, Sprite art, Rect bounds, bool bottom = false)
+        private static void Fit(Image image, Sprite art, Rect bounds, bool bottom = false, bool mirror = false)
         {
             image.sprite = art;
             if (art == null)
                 return;
             float factor = Mathf.Min(bounds.width / art.rect.width, bounds.height / art.rect.height);
             float w = art.rect.width * factor, h = art.rect.height * factor;
-            Position(image.rectTransform, new Rect(bounds.x + (bounds.width - w) * .5f,
+            RectTransform rect = image.rectTransform;
+            Position(rect, new Rect(bounds.x + (bounds.width - w) * .5f,
                 bounds.y + (bounds.height - h) * (bottom ? 1f : .5f), w, h));
+
+            // Mirror about the artwork center without moving its fitted rectangle.
+            if (mirror)
+            {
+                rect.pivot = new Vector2(.5f, 1f);
+                rect.anchoredPosition = new Vector2(bounds.center.x, -bounds.y - (bounds.height - h) * (bottom ? 1f : .5f));
+            }
+            rect.localScale = new Vector3(mirror ? -1f : 1f, 1f, 1f);
         }
 
         private Text Label(Transform parent, string id, string value, Rect rect, int size, Color color,
