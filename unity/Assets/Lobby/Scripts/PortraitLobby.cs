@@ -34,8 +34,6 @@ namespace KingdomRhapsody
         private const float ReserveBottomInset = 38f;
         private const float ReserveGridPadding = 12f;
         private const float ReserveViewportWidth = 798f;
-        private const float ReserveScrollTrackWidth = 8f;
-        private const float ReserveScrollTrackMaxHeight = 156f;
         // Formation-local coordinates keep the three characters on a shared ground line.
         private static readonly Rect LeftPosition = new Rect(77, 125, 306, 520);
         private static readonly Rect RightPosition = new Rect(625, 125, 300, 520);
@@ -84,7 +82,6 @@ namespace KingdomRhapsody
         private RectTransform reserveViewport;
         private RectTransform reserveGrid;
         private ScrollRect reserveScroll;
-        private Scrollbar reserveScrollbar;
         private Text reserveEmpty;
         private GameObject lastDeckFocus;
         private RectTransform guardDialog;
@@ -356,7 +353,7 @@ namespace KingdomRhapsody
         private void BuildReserveScroll()
         {
             reserveScrollRoot = Box(deckContent, "ReserveScroll",
-                new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth + 12f, TroopCardHeight + 24f));
+                new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth, TroopCardHeight + 24f));
             reserveScroll = reserveScrollRoot.gameObject.AddComponent<ScrollRect>();
             reserveScroll.horizontal = false;
             reserveScroll.vertical = true;
@@ -375,22 +372,7 @@ namespace KingdomRhapsody
             reserveScroll.viewport = reserveViewport;
             reserveScroll.content = reserveGrid;
 
-            RectTransform track = Box(reserveScrollRoot, "ScrollTrack",
-                ReserveScrollbarBounds(TroopCardHeight + 24f));
-            var trackImage = track.gameObject.AddComponent<Image>();
-            trackImage.color = new Color32(20, 32, 55, 105);
-            reserveScrollbar = track.gameObject.AddComponent<Scrollbar>();
-            RectTransform sliding = Stretch(track, "SlidingArea");
-            sliding.offsetMin = new Vector2(1f, 2f);
-            sliding.offsetMax = new Vector2(-1f, -2f);
-            var handle = Stretch(sliding, "Handle").gameObject.AddComponent<Image>();
-            handle.color = new Color32(218, 172, 74, 235);
-            reserveScrollbar.direction = Scrollbar.Direction.BottomToTop;
-            reserveScrollbar.handleRect = handle.rectTransform;
-            reserveScrollbar.targetGraphic = handle;
-            reserveScrollbar.navigation = new Navigation { mode = Navigation.Mode.None };
-            reserveScroll.verticalScrollbar = reserveScrollbar;
-            reserveScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+            // Scroll by touch, drag or mouse wheel without a visible scrollbar.
 
             // All reserves are populated from the roster, not a hard-coded row count.
             reserveCards = new Card[Mathf.Max(0, Roster.Troops.Length - Roster.DeckSize)];
@@ -977,9 +959,8 @@ namespace KingdomRhapsody
             Position(reservePanelRect, new Rect(65, ReservePanelY, 870, Mathf.Max(1f, height - ReservePanelY)));
 
             float viewHeight = Mathf.Max(1f, height - ReserveViewportY - ReserveBottomInset);
-            Position(reserveScrollRoot, new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth + 12f, viewHeight));
+            Position(reserveScrollRoot, new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth, viewHeight));
             Position(reserveViewport, new Rect(0, 0, ReserveViewportWidth, viewHeight));
-            Position((RectTransform)reserveScrollbar.transform, ReserveScrollbarBounds(viewHeight));
 
             int rows = (CollectionCardCount + CardColumns - 1) / CardColumns;
             float cardsHeight = rows == 0 ? 0f : rows * TroopCardHeight + (rows - 1) * CardRowGap;
@@ -1001,8 +982,6 @@ namespace KingdomRhapsody
 
             bool overflow = naturalHeight > viewHeight + .5f && rows > 0;
             reserveScroll.vertical = overflow && !replacing;
-            reserveScrollbar.gameObject.SetActive(overflow);
-            reserveScrollbar.interactable = overflow && !replacing;
             if (!overflow || replacing)
                 reserveScroll.StopMovement();
             SetReserveOffset(previousOffset);
@@ -1010,15 +989,6 @@ namespace KingdomRhapsody
             int selectedIndex = replacing ? Array.IndexOf(reserveIds, pendingTroop) : Array.IndexOf(reserveCards, selectedCard);
             if (selectedIndex >= 0)
                 EnsureReserveVisible(selectedIndex);
-        }
-
-        // Keep the indicator compact and inside the stone panel, independently
-        // of the scrollable viewport height or number of collection cards.
-        private static Rect ReserveScrollbarBounds(float viewHeight)
-        {
-            float height = Mathf.Min(ReserveScrollTrackMaxHeight, viewHeight * .42f);
-            return new Rect(ReserveViewportWidth - 5f, (viewHeight - height) * .5f,
-                ReserveScrollTrackWidth, height);
         }
 
         private void SetReserveOffset(float y)
