@@ -1,5 +1,13 @@
 # Kingdom Rhapsody
 
+## 遊戲設計文件
+
+- [20 張卡牌與戰鬥定位設計](docs/card-design.md)：兵種定位、能力及克制關係。
+- [初始戰鬥數值 V0.1](docs/card-balance-v0.1.md)：血量、攻擊、移速、射程、消耗、技能與索敵類型。
+- [戰場地圖與部署設計 V0.3](docs/battle-map-design.md)：三路地圖、格子部署、重疊部署區、中央危險區、王子環形巡邏與護衛 AI。
+
+上述文件為設計與原型測試基準，尚非完整實作或正式平衡結果。
+
 ## Unity 大廳
 
 取得完整分支後，用 Unity Hub 開啟 [`unity/`](unity) 專案，版本為 **Unity 6.6（`6000.6.8f1`）**。在 Project 視窗開啟 `Assets/Scenes/Lobby.unity` 並按 Play。Game 視窗可選 9:16，或用 1000×1568 對照設計比例。
