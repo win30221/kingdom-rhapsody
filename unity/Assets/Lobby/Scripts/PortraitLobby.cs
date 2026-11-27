@@ -236,7 +236,9 @@ namespace KingdomRhapsody
             deck = Stretch(viewport, "TroopDeck");
             RectTransform header = DesignGroup(deck, "Header", new Vector2(.5f, 1f), HeaderHeight);
             Header(header, "PageTitle", "帶兵牌組", new Rect(235, 14, 530, 234), true);
-            backToLobby = IconButton(deck, "BackButton", "back", new Rect(0, 0, 88, 88), ShowLobby, Cue.Back);
+            // The back sprite's visible arrow is optically left of its texture center.
+            backToLobby = IconButton(deck, "BackButton", "back", new Rect(0, 0, 88, 88), ShowLobby, Cue.Back,
+                opticalOffsetX: .08f);
             Anchor((RectTransform)backToLobby.transform, new Vector2(0f, 1f), new Vector2(33f, -52f));
 
             RectTransform middle = MiddleRegion(deck, "CardRegion", HeaderHeight, DeckFooterHeight);
@@ -775,11 +777,12 @@ namespace KingdomRhapsody
             return button;
         }
 
-        private Button IconButton(Transform parent, string name, string icon, Rect rect, Action click, Cue cue)
+        private Button IconButton(Transform parent, string name, string icon, Rect rect, Action click, Cue cue,
+            float opticalOffsetX = 0f)
         {
             Button button = MakeButton(parent, name, "buttons/icon-button", rect, click, cue,
                 out RectTransform art, out _);
-            Picture(art, "Icon", "icons/" + icon, new Rect(rect.width * .23f, rect.height * .22f,
+            Picture(art, "Icon", "icons/" + icon, new Rect(rect.width * (.23f + opticalOffsetX), rect.height * .22f,
                 rect.width * .54f, rect.height * .54f)).preserveAspect = true;
             return button;
         }
