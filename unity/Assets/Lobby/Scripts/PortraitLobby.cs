@@ -120,6 +120,11 @@ namespace KingdomRhapsody
         private Card[] guardOptions;
         private Card[] deckCards;
         private Card[] reserveCards;
+        // Editor/development-only layout fixtures. These never enter the roster,
+        // loadout, save data, or battle selection.
+        [SerializeField, Range(0, 100)] private int collectionDemoCount = 21;
+        private Card[] collectionDemoCards = Array.Empty<Card>();
+        private int CollectionCardCount => reserveCards.Length + collectionDemoCards.Length;
         private string[] reserveIds;
         private Text guardTitle;
         private Text soundState;
@@ -394,9 +399,41 @@ namespace KingdomRhapsody
                     TroopCardRect(i, CardGridX - ReserveViewportX, ReserveGridPadding), 31,
                     () => SelectReserve(slot), Cue.Tap);
             }
+            BuildCollectionDemoCards();
             reserveEmpty = Label(reserveViewport, "EmptyCollection", "沒有未上陣的兵種",
                 new Rect(0, 0, ReserveViewportWidth, TroopCardHeight), 36, Ivory);
-            reserveEmpty.gameObject.SetActive(reserveCards.Length == 0);
+            reserveEmpty.gameObject.SetActive(CollectionCardCount == 0);
+        }
+
+        private void BuildCollectionDemoCards()
+        {
+            if ((!Application.isEditor && !Debug.isDebugBuild) || Roster.Troops.Length == 0)
+                return;
+
+            int count = Mathf.Clamp(collectionDemoCount, 0, 100);
+            collectionDemoCards = new Card[count];
+            for (int i = 0; i < count; i++)
+            {
+                // Reuse actual character art to evaluate the real grid, not
+                // placeholder silhouettes or new production troop IDs.
+                var troop = Roster.Troops[i % Roster.Troops.Length];
+                Card card = MakeCard(reserveGrid, "CollectionDemo" + (i + 1),
+                    TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, ReserveGridPadding),
+                    31, () => { }, Cue.Silent);
+                SetCard(card, "portraits/troops/" + troop.id, troop.name, "card-gold", false, fullBody: true);
+                var colors = card.Button.colors;
+                colors.disabledColor = Color.white;
+                card.Button.colors = colors;
+                card.Button.interactable = false;
+                card.Button.navigation = new Navigation { mode = Navigation.Mode.None };
+
+                var tag = Box(card.Visual, "DemoTag", new Rect(12, 5, 86, 23)).gameObject.AddComponent<Image>();
+                tag.color = new Color32(17, 35, 63, 225);
+                tag.raycastTarget = false;
+                Label(tag.transform, "DemoLabel", "DEMO " + (i + 1).ToString("00"),
+                    new Rect(0, 0, 86, 23), 17, Gold);
+                collectionDemoCards[i] = card;
+            }
         }
 
         private Card MakeCard(Transform parent, string name, Rect rect, int size, Action click, Cue cue)
@@ -611,6 +648,8 @@ namespace KingdomRhapsody
                 card.VisualGroup.alpha = replacing && !selected ? .42f : 1f;
                 card.Button.interactable = !replacing;
             }
+            foreach (Card demo in collectionDemoCards)
+                demo.VisualGroup.alpha = replacing ? .42f : 1f;
             replaceBar.gameObject.SetActive(replacing);
             LayoutDeckRegions();
             if (replacing)
@@ -941,7 +980,7 @@ namespace KingdomRhapsody
             Position((RectTransform)reserveScrollbar.transform,
                 new Rect(ReserveViewportWidth + 2f, 0, 10, viewHeight));
 
-            int rows = (reserveCards.Length + CardColumns - 1) / CardColumns;
+            int rows = (CollectionCardCount + CardColumns - 1) / CardColumns;
             float cardsHeight = rows == 0 ? 0f : rows * TroopCardHeight + (rows - 1) * CardRowGap;
             float naturalHeight = cardsHeight + 2f * ReserveGridPadding;
             float contentHeight = Mathf.Max(viewHeight, naturalHeight);
@@ -954,6 +993,9 @@ namespace KingdomRhapsody
             for (int i = 0; i < reserveCards.Length; i++)
                 Position((RectTransform)reserveCards[i].Button.transform,
                     TroopCardRect(i, CardGridX - ReserveViewportX, firstRowY));
+            for (int i = 0; i < collectionDemoCards.Length; i++)
+                Position((RectTransform)collectionDemoCards[i].Button.transform,
+                    TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, firstRowY));
             Position(reserveEmpty.rectTransform, new Rect(0, 0, ReserveViewportWidth, viewHeight));
 
             bool overflow = naturalHeight > viewHeight + .5f && rows > 0;
