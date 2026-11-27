@@ -120,7 +120,6 @@ namespace KingdomRhapsody
             BuildDeck();
             BuildDialogs();
             RefreshGuards();
-            FitSafeArea();
             ShowLobby();
         }
 
@@ -357,6 +356,9 @@ namespace KingdomRhapsody
             background.enabled = background.sprite != null;
             if (background.sprite != null)
                 backgroundFit.aspectRatio = background.sprite.rect.width / background.sprite.rect.height;
+
+            // A page may have a different background aspect ratio.
+            FitSafeArea();
         }
 
         private void RefreshGuards()
@@ -521,6 +523,7 @@ namespace KingdomRhapsody
             Rect safe = Screen.safeArea;
             if (safe.width <= 0 || safe.height <= 0)
                 safe = new Rect(0, 0, screen.x, screen.y);
+            safe = VisibleArtworkSafeArea(screen, safe, background.sprite);
             float scale = canvas.scaleFactor;
             if (lastScreenSize == screen && lastSafeArea == safe && Mathf.Approximately(lastScale, scale))
                 return;
@@ -532,7 +535,7 @@ namespace KingdomRhapsody
             float pixelsPerUnit = Mathf.Min(safe.width / DesignSize.x, safe.height / DesignSize.y);
             float fit = pixelsPerUnit / Mathf.Max(.001f, scale);
 
-            // Keep one uniform art scale, but let edge anchors use the entire safe area.
+            // Keep edge anchors inside the visible artwork and the device safe area.
             Center(viewport, anchor, fit);
             Vector2 safeSize = safe.size / pixelsPerUnit;
             viewport.sizeDelta = safeSize;
@@ -541,6 +544,27 @@ namespace KingdomRhapsody
 
             // Modal artwork retains its fixed design canvas and remains centered.
             Center(dialogViewport, anchor, fit);
+        }
+
+        private static Rect VisibleArtworkSafeArea(Vector2Int screen, Rect safe, Sprite art)
+        {
+            if (art == null || art.rect.width <= 0f || art.rect.height <= 0f)
+                return safe;
+
+            // HeightControlsWidth centers the full-height artwork in screen space.
+            // Intersect its visible horizontal span with the device's safe area,
+            // so letterbox bars never become part of the UI layout.
+            float artworkWidth = screen.y * (art.rect.width / art.rect.height);
+            float inset = Mathf.Max(0f, (screen.x - artworkWidth) * .5f);
+            float left = Mathf.Max(safe.xMin, inset);
+            float right = Mathf.Min(safe.xMax, screen.x - inset);
+
+            // A pathological safe area with no artwork intersection has no valid
+            // shared region; retain the device-safe fallback instead of dividing by zero.
+            if (right <= left)
+                return safe;
+
+            return Rect.MinMaxRect(left, safe.yMin, right, safe.yMax);
         }
 
         private static void Center(RectTransform rect, Vector2 anchor, float fit)
