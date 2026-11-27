@@ -744,7 +744,7 @@ namespace KingdomRhapsody
         {
             Image plate = Picture(parent, id, crown ? "frames/title-banner" : "frames/section-header", rect);
             Rect bounds = crown
-                ? new Rect(rect.width * .12f, rect.height * .43f, rect.width * .76f, rect.height * .36f)
+                ? new Rect(rect.width * .12f, rect.height * .38f, rect.width * .76f, rect.height * .36f)
                 : new Rect(0, 0, rect.width, rect.height * .94f);
             return Label(plate.transform, "Title", value, bounds, crown ? 64 : 50, Gold);
         }
