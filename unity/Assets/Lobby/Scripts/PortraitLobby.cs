@@ -273,7 +273,8 @@ namespace KingdomRhapsody
             var card = new Card();
             card.Button = MakeButton(parent, name, "frames/card-field", rect, click, cue, out RectTransform art, out Image field);
             field.color = new Color32(33, 48, 76, 255);
-            card.PortraitBounds = new Rect(rect.width * .11f, rect.height * .095f, rect.width * .78f, rect.height * .68f);
+            // Reserve space for the frame and the separate name plate.
+            card.PortraitBounds = new Rect(rect.width * .14f, rect.height * .095f, rect.width * .72f, rect.height * .59f);
             card.Portrait = Picture(art, "Portrait", null, card.PortraitBounds);
             card.Frame = Picture(art, "Frame", "frames/card-gold", new Rect(0, 0, rect.width, rect.height));
             card.Label = Label(art, "Name", "", new Rect(rect.width * .095f, rect.height * .77f,
@@ -283,9 +284,9 @@ namespace KingdomRhapsody
             return card;
         }
 
-        private void SetCard(Card card, string art, string name, string frame, bool check)
+        private void SetCard(Card card, string art, string name, string frame, bool check, bool fullBody = false)
         {
-            Fit(card.Portrait, CardPortrait(art), card.PortraitBounds, true);
+            Fit(card.Portrait, CardPortrait(art, fullBody), card.PortraitBounds);
             card.Label.text = name;
             card.Frame.sprite = Sprite("frames/" + frame);
             card.Check.gameObject.SetActive(check);
@@ -428,14 +429,14 @@ namespace KingdomRhapsody
             {
                 string id = loadout.deck[i];
                 SetCard(deckCards[i], "portraits/troops/" + id, Roster.Name(id),
-                    i == deckSlot ? "card-gold-selected" : "card-gold", false);
+                    i == deckSlot ? "card-gold-selected" : "card-gold", false, fullBody: true);
             }
             for (int i = 0; i < reserveCards.Length; i++)
             {
                 string id = reserveIds[i];
                 bool selected = id == replacement;
                 SetCard(reserveCards[i], "portraits/troops/" + id, Roster.Name(id),
-                    selected ? "card-cyan-selected" : "card-gold", selected);
+                    selected ? "card-cyan-selected" : "card-gold", selected, fullBody: true);
             }
             swap.interactable = loadout.CanReplace(deckSlot, replacement);
             swapLabel.text = swap.interactable ? "換上" + Roster.Name(replacement) :
@@ -597,11 +598,19 @@ namespace KingdomRhapsody
 
         // Dedicated presentation portraits are independent of the battle sprite sheets.
         // Legacy assets remain usable until the optional illustration package is installed.
-        private Sprite CardPortrait(string legacyPath)
+        private Sprite CardPortrait(string legacyPath, bool fullBody = false)
         {
             if (string.IsNullOrEmpty(legacyPath))
                 return null;
             string id = legacyPath.Substring(legacyPath.LastIndexOf('/') + 1);
+            // Troop cards use complete silhouettes: resizing a pre-cropped portrait
+            // cannot recover weapons or a mount outside its source image.
+            if (fullBody)
+            {
+                Sprite illustration = Sprite("illustrations/characters/" + id);
+                if (illustration != null)
+                    return illustration;
+            }
             return Sprite("card-portraits/" + id) ?? Sprite(legacyPath);
         }
 
