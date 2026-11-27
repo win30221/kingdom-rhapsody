@@ -22,36 +22,9 @@ namespace KingdomRhapsody
     internal static class Roster
     {
         internal const int DeckSize = 8;
-        internal static readonly (string id, string name, string action)[] Troops =
-        {
-            ("shieldman", "盾兵", "盾擊"),
-            ("bow-recruit", "新手弓手", "射箭"),
-            ("cannoneer", "火炮槍兵", "舉炮與後坐"),
-            ("footman", "近戰小兵", "短劍揮砍"),
-            ("hammer-guard", "重鎚兵", "重鎚砸地"),
-            ("axe-guard", "巨斧兵", "橫掃"),
-            ("frost-mage", "冰霜術士", "冰霜施法"),
-            ("flame-mage", "火焰術士", "火焰施法"),
-            ("standard-bearer", "軍旗手", "舉旗"),
-            ("field-medic", "醫官", "遞出藥瓶"),
-            ("light-cavalry", "輕騎兵", "衝鋒")
-        };
-
-        internal static string Name(string id)
-        {
-            foreach (var troop in Troops)
-                if (troop.id == id)
-                    return troop.name;
-            return "";
-        }
-
-        internal static string ActionName(string id)
-        {
-            foreach (var troop in Troops)
-                if (troop.id == id)
-                    return troop.action;
-            return "";
-        }
+        internal static readonly BattleCard[] Troops = BattleCatalog.Cards;
+        internal static string Name(string id) => BattleCatalog.Find(id)?.Name ?? "";
+        internal static string ActionName(string id) => BattleCatalog.Find(id)?.Action ?? "";
 
         internal static string Name(RoyalGuard guard) => guard == RoyalGuard.Spearman ? "長槍兵" : "弩手";
         internal static string SpriteId(RoyalGuard guard) => guard == RoyalGuard.Spearman ? "royal-spearman" : "royal-crossbowman";
@@ -85,8 +58,8 @@ namespace KingdomRhapsody
             {
                 if (accepted.Count == Roster.DeckSize)
                     break;
-                if (!accepted.Contains(troop.id))
-                    accepted.Add(troop.id);
+                if (!accepted.Contains(troop.Id))
+                    accepted.Add(troop.Id);
             }
             deck = accepted.ToArray();
         }
@@ -95,8 +68,8 @@ namespace KingdomRhapsody
         {
             var result = new List<string>();
             foreach (var troop in Roster.Troops)
-                if (Array.IndexOf(deck, troop.id) < 0)
-                    result.Add(troop.id);
+                if (Array.IndexOf(deck, troop.Id) < 0)
+                    result.Add(troop.Id);
             return result.ToArray();
         }
 

@@ -31,8 +31,9 @@ def main():
         codepoints = set(old_font.getBestCmap())
         old_font.close()
         codepoints.update(range(32, 127))
-        for path in (ROOT / "unity/Assets/Lobby/Scripts").rglob("*.cs"):
-            codepoints.update(ord(ch) for ch in path.read_text(encoding="utf-8") if not ch.isspace())
+        for folder in ("Lobby", "Battle"):
+            for path in (ROOT / f"unity/Assets/{folder}/Scripts").rglob("*.cs"):
+                codepoints.update(ord(ch) for ch in path.read_text(encoding="utf-8") if not ch.isspace())
         font = TTFont(original)
         missing = sorted(codepoints - set(font.getBestCmap()))
         if missing:

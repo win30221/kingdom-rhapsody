@@ -1,0 +1,47 @@
+{
+  "id": "bloodthorn-flower",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 6,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "0af2c9b080d93f7ab6fb0b82100112f3d78c56955c3977ba7f168d7d1899c5a1"
+    },
+    {
+      "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "57ae88460a6536c08c0c6c8e09b816905c4cbc21455832d2e2381e27f90a7edd"
+    },
+    {
+      "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Lash.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "c5b63bdb98543c8925ea2c18657030dcd25d194126465a7b8c48aa754c48ab9c"
+    },
+    {
+      "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Bloom.png",
+      "pose": "Bloom",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "882b62c5b589d3f67f583d382350caa353c1825c13da271b75d05f16b79d1aa3"
+    }
+  ]
+}

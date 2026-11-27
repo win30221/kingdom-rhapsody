@@ -1,0 +1,990 @@
+{
+  "directions": [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW"
+  ],
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivot": {
+    "x": 0.5,
+    "y": 0.2,
+    "origin": "bottom-left"
+  },
+  "version": 2,
+  "pathBase": "repository-root",
+  "format": "transparent-rgba-png",
+  "eventFrameIndexBase": 0,
+  "compatibleBranch": "art/expanded-royal-roster",
+  "characters": [
+    {
+      "id": "prince",
+      "label": "王子",
+      "group": "royal",
+      "frameSize": 192,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/prince/Prince_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/prince/Prince_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "sprint",
+          "label": "疾跑",
+          "purpose": "action",
+          "file": "art/character-sprites/prince/Prince_Sprint.png",
+          "frames": 12,
+          "fps": 20,
+          "loop": true,
+          "origin": "existing"
+        }
+      ]
+    },
+    {
+      "id": "royal-spearman",
+      "label": "皇家護衛長槍兵",
+      "group": "royal",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/spearman/Spearman_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/spearman/Spearman_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "attack",
+          "label": "長槍突刺",
+          "purpose": "action",
+          "file": "art/character-sprites/spearman/Spearman_Attack.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "royal-crossbowman",
+      "label": "皇家護衛弩手",
+      "group": "royal",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/archer/Archer_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/archer/Archer_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "attack",
+          "label": "弩箭射擊",
+          "purpose": "action",
+          "file": "art/character-sprites/archer/Archer_Attack.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "spawn-bolt"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shieldman",
+      "label": "盾兵",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/shieldman/Shieldman_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/shieldman/Shieldman_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "盾擊",
+          "purpose": "action",
+          "file": "art/character-sprites/shieldman/Shieldman_Bash.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bow-recruit",
+      "label": "新手弓手",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/bow-recruit/BowRecruit_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/bow-recruit/BowRecruit_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "射箭",
+          "purpose": "action",
+          "file": "art/character-sprites/bow-recruit/BowRecruit_Shoot.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "spawn-arrow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cannoneer",
+      "label": "火炮槍兵",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/cannoneer/Cannoneer_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/cannoneer/Cannoneer_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "舉炮與後坐",
+          "purpose": "action",
+          "file": "art/character-sprites/cannoneer/Cannoneer_Fire.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "spawn-cannonball"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "footman",
+      "label": "近戰小兵",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/footman/Footman_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/footman/Footman_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "短劍揮砍",
+          "purpose": "action",
+          "file": "art/character-sprites/footman/Footman_Slash.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "standard-bearer",
+      "label": "軍旗手",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/standard-bearer/StandardBearer_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/standard-bearer/StandardBearer_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "舉旗",
+          "purpose": "action",
+          "file": "art/character-sprites/standard-bearer/StandardBearer_Rally.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "rally"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "field-medic",
+      "label": "醫官",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/field-medic/FieldMedic_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/field-medic/FieldMedic_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "遞出藥瓶",
+          "purpose": "action",
+          "file": "art/character-sprites/field-medic/FieldMedic_Heal.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "heal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "light-cavalry",
+      "label": "輕騎兵",
+      "group": "human",
+      "frameSize": 320,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/light-cavalry/LightCavalry_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/light-cavalry/LightCavalry_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "衝鋒",
+          "purpose": "action",
+          "file": "art/character-sprites/light-cavalry/LightCavalry_Charge.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hammer-guard",
+      "label": "重鎚兵",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/hammer-guard/HammerGuard_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/hammer-guard/HammerGuard_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "重鎚砸地",
+          "purpose": "action",
+          "file": "art/character-sprites/hammer-guard/HammerGuard_Slam.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "axe-guard",
+      "label": "巨斧兵",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/axe-guard/AxeGuard_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/axe-guard/AxeGuard_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "橫掃",
+          "purpose": "action",
+          "file": "art/character-sprites/axe-guard/AxeGuard_Sweep.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frost-mage",
+      "label": "冰霜術士",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/frost-mage/FrostMage_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/frost-mage/FrostMage_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "冰霜施法",
+          "purpose": "action",
+          "file": "art/character-sprites/frost-mage/FrostMage_Cast.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "cast-frost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flame-mage",
+      "label": "火焰術士",
+      "group": "human",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/flame-mage/FlameMage_Idle.png",
+          "frames": 12,
+          "fps": 8,
+          "loop": true,
+          "origin": "reviewed-idle"
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/flame-mage/FlameMage_Walk.png",
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "origin": "existing"
+        },
+        {
+          "id": "action",
+          "label": "火焰施法",
+          "purpose": "action",
+          "file": "art/character-sprites/flame-mage/FlameMage_Cast.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "existing",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "cast-flame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bloodthorn-flower",
+      "label": "血棘花妖",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/bloodthorn-flower/BloodthornFlower_Idle.png",
+          "frames": 12,
+          "fps": 6,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 2
+        },
+        {
+          "id": "walk",
+          "label": "根鬚步行",
+          "purpose": "move",
+          "file": "art/character-sprites/bloodthorn-flower/BloodthornFlower_Walk.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "lash",
+          "label": "藤蔓抽擊",
+          "purpose": "action",
+          "file": "art/character-sprites/bloodthorn-flower/BloodthornFlower_Lash.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        },
+        {
+          "id": "bloom",
+          "label": "第三擊綻放",
+          "purpose": "variant",
+          "file": "art/character-sprites/bloodthorn-flower/BloodthornFlower_Bloom.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "critical-hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        }
+      ]
+    },
+    {
+      "id": "crystal-armadillo",
+      "label": "晶甲犰狳",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/crystal-armadillo/CrystalArmadillo_Idle.png",
+          "frames": 12,
+          "fps": 6,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 2
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/crystal-armadillo/CrystalArmadillo_Walk.png",
+          "frames": 12,
+          "fps": 14,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "ram",
+          "label": "晶甲撞擊",
+          "purpose": "action",
+          "file": "art/character-sprites/crystal-armadillo/CrystalArmadillo_Ram.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        },
+        {
+          "id": "shield-break",
+          "label": "晶甲破碎暗化",
+          "purpose": "variant",
+          "file": "art/character-sprites/crystal-armadillo/CrystalArmadillo_ShieldBreak.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "shield-break"
+            }
+          ],
+          "targetVisualState": "shield-dim",
+          "minDistinctPoses": 3
+        },
+        {
+          "id": "shield-regrow",
+          "label": "晶甲再生",
+          "purpose": "variant",
+          "file": "art/character-sprites/crystal-armadillo/CrystalArmadillo_ShieldRegrow.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "shield-regrow"
+            }
+          ],
+          "targetVisualState": "shield-normal",
+          "minDistinctPoses": 2
+        }
+      ]
+    },
+    {
+      "id": "venom-toad",
+      "label": "毒囊蟾蜍",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/venom-toad/VenomToad_Idle.png",
+          "frames": 12,
+          "fps": 6,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 2
+        },
+        {
+          "id": "walk",
+          "label": "跳躍移動",
+          "purpose": "move",
+          "file": "art/character-sprites/venom-toad/VenomToad_Walk.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "spit",
+          "label": "噴出毒液",
+          "purpose": "action",
+          "file": "art/character-sprites/venom-toad/VenomToad_Spit.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "spawn-venom"
+            }
+          ],
+          "minDistinctPoses": 5
+        }
+      ]
+    },
+    {
+      "id": "crimsonwing-bat",
+      "label": "赤翼蝠獸",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/crimsonwing-bat/CrimsonwingBat_Idle.png",
+          "frames": 12,
+          "fps": 18,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "walk",
+          "label": "振翅飛行",
+          "purpose": "move",
+          "file": "art/character-sprites/crimsonwing-bat/CrimsonwingBat_Walk.png",
+          "frames": 12,
+          "fps": 24,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "bite",
+          "label": "低空撲咬",
+          "purpose": "action",
+          "file": "art/character-sprites/crimsonwing-bat/CrimsonwingBat_Bite.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        },
+        {
+          "id": "awaken",
+          "label": "嗜血覺醒",
+          "purpose": "variant",
+          "file": "art/character-sprites/crimsonwing-bat/CrimsonwingBat_Awaken.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "awaken"
+            }
+          ],
+          "targetVisualState": "bloodthirst",
+          "minDistinctPoses": 4
+        }
+      ]
+    },
+    {
+      "id": "thunderhorn-rhino",
+      "label": "雷角犀牛",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/thunderhorn-rhino/ThunderhornRhino_Idle.png",
+          "frames": 12,
+          "fps": 6,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 2
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/thunderhorn-rhino/ThunderhornRhino_Walk.png",
+          "frames": 12,
+          "fps": 15,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "ram",
+          "label": "雷角撞擊",
+          "purpose": "action",
+          "file": "art/character-sprites/thunderhorn-rhino/ThunderhornRhino_Ram.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "thunder-hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        }
+      ]
+    },
+    {
+      "id": "sunder-pangolin",
+      "label": "裂甲穿山獸",
+      "group": "beast",
+      "frameSize": 256,
+      "clips": [
+        {
+          "id": "idle",
+          "label": "待機",
+          "purpose": "idle",
+          "file": "art/character-sprites/sunder-pangolin/SunderPangolin_Idle.png",
+          "frames": 12,
+          "fps": 6,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 2
+        },
+        {
+          "id": "walk",
+          "label": "走路",
+          "purpose": "move",
+          "file": "art/character-sprites/sunder-pangolin/SunderPangolin_Walk.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": true,
+          "origin": "redrawn",
+          "minDistinctPoses": 4
+        },
+        {
+          "id": "claw",
+          "label": "前爪重擊",
+          "purpose": "action",
+          "file": "art/character-sprites/sunder-pangolin/SunderPangolin_Claw.png",
+          "frames": 12,
+          "fps": 16,
+          "loop": false,
+          "origin": "redrawn",
+          "events": [
+            {
+              "frame": 6,
+              "cue": "hit"
+            }
+          ],
+          "minDistinctPoses": 5
+        }
+      ]
+    }
+  ]
+}

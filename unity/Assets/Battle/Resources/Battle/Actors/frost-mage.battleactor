@@ -1,0 +1,38 @@
+{
+  "id": "frost-mage",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/frost-mage/FrostMage_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "06c0bd48cef50122ac86cce97c713fa88fb69b8fffc044030801fc2d55a5dbb4"
+    },
+    {
+      "path": "character-sprites/frost-mage/FrostMage_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "19878c09360b0a8429845851db66e3c48212514241061b4da8f1e902859fc534"
+    },
+    {
+      "path": "character-sprites/frost-mage/FrostMage_Cast.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "8a2da503f85b88bc8307e2c7fb654bc6bd10660cbb5d0f9a3a219c95f002e4ac"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "standard-bearer",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/standard-bearer/StandardBearer_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "e3adda3996c70ffd239c5cdcbce061975baa40b13221d1edd48e5fee47b8298a"
+    },
+    {
+      "path": "character-sprites/standard-bearer/StandardBearer_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "664412e9b104868d6ea338e5dd93fd7e610e5ed24b9676dc0e5f4f44680aae6c"
+    },
+    {
+      "path": "character-sprites/standard-bearer/StandardBearer_Rally.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "db46901c9cb9f1363992eedd74a9f1155a1509b088636c1d887d2323c48f88a1"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"name":"com.realtime.interpolation","version":"0.1.0","displayName":"Realtime Interpolation","description":"Optional fixed and adaptive snapshot timeline implementations.","unity":"6000.0","dependencies":{"com.realtime.core":"0.1.0"}}

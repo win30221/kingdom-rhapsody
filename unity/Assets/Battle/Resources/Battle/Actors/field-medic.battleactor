@@ -1,0 +1,38 @@
+{
+  "id": "field-medic",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/field-medic/FieldMedic_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "7ee2a40a581f696e4a36a8962a1b99051b366fc6b5992fb54f00de3e8bc7ed26"
+    },
+    {
+      "path": "character-sprites/field-medic/FieldMedic_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "f79c630db80798e0f15d924423eaf3319561d1ded78b49115b645f4adea4b9c0"
+    },
+    {
+      "path": "character-sprites/field-medic/FieldMedic_Heal.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "eb995cf3d7bf7aef14a648a18b651bed9726309a15606d7c03b1fa5fbd1df617"
+    }
+  ]
+}

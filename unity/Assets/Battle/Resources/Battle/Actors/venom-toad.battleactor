@@ -1,0 +1,38 @@
+{
+  "id": "venom-toad",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/venom-toad/VenomToad_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 6,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "178a20d82b491841367d0c4532819169e73ac4b48b0a9a178796daab9a2a3c9a"
+    },
+    {
+      "path": "character-sprites/venom-toad/VenomToad_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "8acfaebe30cad66ca741ad25dec3ecfa468b4b984dfc29a7014bdce13886f480"
+    },
+    {
+      "path": "character-sprites/venom-toad/VenomToad_Spit.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "3da53e698e0ce18d6d1d0223b94f2b5d515d5c7b0e7f3d0b0c229a5287c76514"
+    }
+  ]
+}

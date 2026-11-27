@@ -1,0 +1,38 @@
+{
+  "id": "shieldman",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/shieldman/Shieldman_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "f3b9af0b31dc9500aa6f78e07f7bf36fe3bca3d0ed33ab3bbd5bfed9dba35cb1"
+    },
+    {
+      "path": "character-sprites/shieldman/Shieldman_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "38bad2770ad8c8999ad3db747d90fd9a07d7fdf52c8ce4893c83f5af06d93103"
+    },
+    {
+      "path": "character-sprites/shieldman/Shieldman_Bash.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "2da231b0c70534625500abd8d6b978af23060cc83fe9e10bf36fdb40c7e77b5a"
+    }
+  ]
+}

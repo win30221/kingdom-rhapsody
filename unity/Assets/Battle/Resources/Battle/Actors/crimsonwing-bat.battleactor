@@ -1,0 +1,47 @@
+{
+  "id": "crimsonwing-bat",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/crimsonwing-bat/CrimsonwingBat_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 18,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "4acafd5ec880e34b79cb97e35db5a910d63e822cebabf65b2f16c1e6c7f91238"
+    },
+    {
+      "path": "character-sprites/crimsonwing-bat/CrimsonwingBat_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 24,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "048c8f5d2156d081d3f7a97e350d953b91879dc9bd21794d00d85ca380df2429"
+    },
+    {
+      "path": "character-sprites/crimsonwing-bat/CrimsonwingBat_Bite.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "8867c02a05f7fe167fae89646dca8de8be7567bb8b67982207a7135e7e2fab77"
+    },
+    {
+      "path": "character-sprites/crimsonwing-bat/CrimsonwingBat_Awaken.png",
+      "pose": "Awaken",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "03d9eb8056e8aba509b1cdb79555aff9613f551be90757132ce45b750bdc8741"
+    }
+  ]
+}

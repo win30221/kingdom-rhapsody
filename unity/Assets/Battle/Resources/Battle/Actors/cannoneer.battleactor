@@ -1,0 +1,38 @@
+{
+  "id": "cannoneer",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/cannoneer/Cannoneer_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "b369b36d04a2846976ffc785c0df635f93f63da74919d96a1270932094e45ca2"
+    },
+    {
+      "path": "character-sprites/cannoneer/Cannoneer_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "91194d4690e587a51d1c53c5209e5587c39634b0877cbbbe29eae4833cd44ad4"
+    },
+    {
+      "path": "character-sprites/cannoneer/Cannoneer_Fire.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "0c7ffd40a7d5152663ffe196f4864d424cae40aaa8c89a9c7cb2ff9f6c5515b1"
+    }
+  ]
+}

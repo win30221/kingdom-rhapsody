@@ -1,0 +1,38 @@
+{
+  "id": "light-cavalry",
+  "size": 320,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/light-cavalry/LightCavalry_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "eb9dabdbec8d9eac18a0d60a12fa0edacb050fe037a96905434019ee3a1cc7d1"
+    },
+    {
+      "path": "character-sprites/light-cavalry/LightCavalry_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "8aad1924e69457e0f8d0a2d22fa794e875862cf4899a814eb37ff547f429b290"
+    },
+    {
+      "path": "character-sprites/light-cavalry/LightCavalry_Charge.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "aa040fd8c3f227bbeccdc099c09bb39bd02ebb878272f15ec5f603c91b36cf51"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "royal-crossbowman",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/archer/Archer_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "c44a450f56c21a7941e9fa95caf2e07e433d4a04f7906de9a977ba48be30889c"
+    },
+    {
+      "path": "character-sprites/archer/Archer_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "5bfbf59a633fb0d4fd8cea2385cca114afe3ead3f01797eaa99dc5e70a1fa11e"
+    },
+    {
+      "path": "character-sprites/archer/Archer_Attack.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "b2a964b9caf1663154e3abec1181149d12cae4231a37abbbfd52fd1d846cfea8"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "crystal-armadillo",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/crystal-armadillo/CrystalArmadillo_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 6,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "7491de26018c3f1117fcb2ebcade379e67694fa283314ddf58eb7ab930bb2df5"
+    },
+    {
+      "path": "character-sprites/crystal-armadillo/CrystalArmadillo_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 14,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "d4df1d2b578afbc4136abf9dd217ddd21a69288bba60e7cba5f8e61d8e5c15c5"
+    },
+    {
+      "path": "character-sprites/crystal-armadillo/CrystalArmadillo_Ram.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "ad26d968e01bfde7d4fd894d2ab5b1ee381910f437dc02186f2a8d281273f83e"
+    },
+    {
+      "path": "character-sprites/crystal-armadillo/CrystalArmadillo_ShieldBreak.png",
+      "pose": "ShieldBreak",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "1b3f0022e787b185978b90c7c1ff640e589aa515f85333ba2b63c7b0dbfcee33"
+    },
+    {
+      "path": "character-sprites/crystal-armadillo/CrystalArmadillo_ShieldRegrow.png",
+      "pose": "ShieldRegrow",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "5d97dd702a4fff0df6b9db7db1fc42287a88f1091867aaabdda797530a543572"
+    }
+  ]
+}

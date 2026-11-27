@@ -1,0 +1,38 @@
+{
+  "id": "flame-mage",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/flame-mage/FlameMage_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "c4d7e36b752d76bd2a6aa882996cb12bba9c31d1fdd0a1d6b820c8f1c8e22343"
+    },
+    {
+      "path": "character-sprites/flame-mage/FlameMage_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "b1531f672c262817ae768826c1007ccec8e38745d159a80fa93b80479b9e885e"
+    },
+    {
+      "path": "character-sprites/flame-mage/FlameMage_Cast.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "a26eedf934b489ee128631a53bc030cfac28cdd43b6b413cb9d891762e8bd478"
+    }
+  ]
+}

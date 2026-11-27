@@ -1,0 +1,38 @@
+{
+  "id": "sunder-pangolin",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/sunder-pangolin/SunderPangolin_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 6,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "10f447efc9497aa4bcd1e535aaf68e744889224b86c3053a8d8f4b21a680ee46"
+    },
+    {
+      "path": "character-sprites/sunder-pangolin/SunderPangolin_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "7ac398f9073ab4be5e13d9fd73731e22dbee50458a3ad070617915e149eb12f3"
+    },
+    {
+      "path": "character-sprites/sunder-pangolin/SunderPangolin_Claw.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "c4bdffba6c8656646f3e91afda975a02e7dc888a366a1e7027a00d01a081da15"
+    }
+  ]
+}

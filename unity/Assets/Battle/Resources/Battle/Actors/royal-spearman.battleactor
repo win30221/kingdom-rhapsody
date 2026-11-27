@@ -1,0 +1,38 @@
+{
+  "id": "royal-spearman",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/spearman/Spearman_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "682576ba128b4a97d903229e2c8612719badd8a04f5b39570522a0cb45e24faa"
+    },
+    {
+      "path": "character-sprites/spearman/Spearman_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "e4629c10f7d0ce3a215c2b0a818edc3e16689ff2f6737c92dfd0097f09a9e96e"
+    },
+    {
+      "path": "character-sprites/spearman/Spearman_Attack.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "823b768c7eb360c222a0a9568af4646a3c05ec5f38bc6d78ccc66bf67f6bce72"
+    }
+  ]
+}

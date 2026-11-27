@@ -1,0 +1,38 @@
+{
+  "id": "footman",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/footman/Footman_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "3d5a7f785943f599bdd54428642b2af31eda42d3973805da516c34cf0d5c1cda"
+    },
+    {
+      "path": "character-sprites/footman/Footman_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "557ea685f0c24a3aee855cc73b4a57ca412e644e12c8d527afcb00a8c9df7f98"
+    },
+    {
+      "path": "character-sprites/footman/Footman_Slash.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "8e1d570adf5e6086c385cb35e74bbf867803897960e001797ddf3398382afed2"
+    }
+  ]
+}

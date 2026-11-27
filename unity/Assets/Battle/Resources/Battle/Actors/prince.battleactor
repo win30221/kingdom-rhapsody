@@ -1,0 +1,38 @@
+{
+  "id": "prince",
+  "size": 192,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/prince/Prince_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "ab1997dbfdb58c40de62b0bfa9bf8558b0731538e4d25407a6839df8d074bfe4"
+    },
+    {
+      "path": "character-sprites/prince/Prince_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "e480c9f54488120cead11be73fc41e03ef1bf97aef40fae9c3da13f107e32620"
+    },
+    {
+      "path": "character-sprites/prince/Prince_Sprint.png",
+      "pose": "Sprint",
+      "frames": 12,
+      "fps": 20,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "063947631996f1856542831eb8300480101e6e92ee4c6ccae3d2f2a49703d713"
+    }
+  ]
+}

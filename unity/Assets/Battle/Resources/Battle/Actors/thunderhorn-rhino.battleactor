@@ -1,0 +1,38 @@
+{
+  "id": "thunderhorn-rhino",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/thunderhorn-rhino/ThunderhornRhino_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 6,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "4c9a69ea0a0db64fc6be9af7688eb8c896fb367cceb0124e0ad2e55d97a0aeb8"
+    },
+    {
+      "path": "character-sprites/thunderhorn-rhino/ThunderhornRhino_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 15,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "9b166ea0a3f8a9dfd68c564f47ef0d5d451331e2eab79556cfee79aa9a310e30"
+    },
+    {
+      "path": "character-sprites/thunderhorn-rhino/ThunderhornRhino_Ram.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "86fce9d0c439c3051d4f582982d618e7165d2a284aa5d549b8e020b8e6459603"
+    }
+  ]
+}

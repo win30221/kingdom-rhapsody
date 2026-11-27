@@ -1,0 +1,38 @@
+{
+  "id": "bow-recruit",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/bow-recruit/BowRecruit_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "a1eece3559ad8f429195a248082e49ec7c29c8061278c357cf7312c1d05e024a"
+    },
+    {
+      "path": "character-sprites/bow-recruit/BowRecruit_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "3d624dc6b3b97b8fbcbe4aa0e4acf5bd69af10216ec19e9eccbc1a329a7896f1"
+    },
+    {
+      "path": "character-sprites/bow-recruit/BowRecruit_Shoot.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "07a689e92ec1089e7cb3fbd42702176a1df63ad15a39510e4bc230edd1371bb3"
+    }
+  ]
+}

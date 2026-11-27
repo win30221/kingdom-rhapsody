@@ -21,11 +21,11 @@ namespace KingdomRhapsody.Editor
         public override void OnImportAsset(AssetImportContext context)
         {
             var crop = JsonUtility.FromJson<Crop>(File.ReadAllText(context.assetPath));
-            string art = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "art"));
-            string sourcePath = Path.GetFullPath(Path.Combine(art, crop.path));
-            if (!sourcePath.StartsWith(art + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(sourcePath))
+            string sourcePath;
+            try { sourcePath = CharacterArtSource.Resolve(crop.path); }
+            catch (FileNotFoundException error)
             {
-                context.LogImportError("Could not find source art. Open the Unity project in the full repository checkout.");
+                context.LogImportError(error.Message);
                 return;
             }
 

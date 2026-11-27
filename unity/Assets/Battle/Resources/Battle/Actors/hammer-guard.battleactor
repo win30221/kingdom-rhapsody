@@ -1,0 +1,38 @@
+{
+  "id": "hammer-guard",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/hammer-guard/HammerGuard_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "c85fb433b650cbe705ef10bee295c82b0a529c12599d93a25ca75ac47b88b5b8"
+    },
+    {
+      "path": "character-sprites/hammer-guard/HammerGuard_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "656213c94ca9bd0800ae613eec28aec4023ecff79e6d7ba1432f9de4e8edccd7"
+    },
+    {
+      "path": "character-sprites/hammer-guard/HammerGuard_Slam.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "083a0fa9bffa6f5bad7f96923a930f546ce07c0fece67598968883822b53d458"
+    }
+  ]
+}

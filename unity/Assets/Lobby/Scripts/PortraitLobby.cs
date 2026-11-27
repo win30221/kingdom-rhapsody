@@ -86,12 +86,10 @@ namespace KingdomRhapsody
         private GameObject lastDeckFocus;
         private RectTransform guardDialog;
         private RectTransform soundDialog;
-        private RectTransform deployDialog;
         private RectTransform activeDialog;
         private Button goToDeck;
         private Button backToLobby;
         private Button soundButton;
-        private Button departBack;
         private RectTransform cardActionLayer;
         private RectTransform cardActionMenu;
         private CanvasGroup cardActionFade;
@@ -127,7 +125,7 @@ namespace KingdomRhapsody
         private string[] reserveIds;
         private Text guardTitle;
         private Text soundState;
-        private Text deploySummary;
+        private BattlePractice practice;
         private Card selectedCard;
         private string selectedTroop;
         private string pendingTroop;
@@ -175,10 +173,12 @@ namespace KingdomRhapsody
             BuildDialogs();
             RefreshGuards();
             ShowLobby();
+            BattleRequested += BeginPractice;
         }
 
         private void OnDestroy()
         {
+            BattleRequested -= BeginPractice;
             if (canvas != null)
                 Destroy(canvas.gameObject);
             if (ownsExtendedFont && extendedFont != null)
@@ -315,7 +315,7 @@ namespace KingdomRhapsody
             // Only the collection scrolls; the eight deployment slots stay in place.
             reservePanelRect = Picture(deckContent, "ReservesPanel", "frames/stone-panel",
                 new Rect(65, ReservePanelY, 870, 490), true).rectTransform;
-            Header(deckContent, "ReservesHeader", "兵種收藏", new Rect(287, 697, 426, 103));
+            Header(deckContent, "ReservesHeader", "卡牌收藏", new Rect(287, 697, 426, 103));
             BuildReserveScroll();
             deckFooter = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckIdleFooterHeight);
             replaceBar = Box(deckFooter, "ReplacePrompt", new Rect(50, 0, 900, 140));
@@ -384,7 +384,7 @@ namespace KingdomRhapsody
                     () => SelectReserve(slot), Cue.Tap);
             }
             BuildCollectionDemoCards();
-            reserveEmpty = Label(reserveViewport, "EmptyCollection", "沒有未上陣的兵種",
+            reserveEmpty = Label(reserveViewport, "EmptyCollection", "沒有未上陣的卡牌",
                 new Rect(0, 0, ReserveViewportWidth, TroopCardHeight), 36, Ivory);
             reserveEmpty.gameObject.SetActive(CollectionCardCount == 0);
         }
@@ -404,7 +404,7 @@ namespace KingdomRhapsody
                 Card card = MakeCard(reserveGrid, "CollectionDemo" + (i + 1),
                     TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, ReserveGridPadding),
                     31, () => { }, Cue.Silent);
-                SetCard(card, "portraits/troops/" + troop.id, troop.name, "card-gold", false, fullBody: true);
+                SetCard(card, "portraits/troops/" + troop.Id, troop.Name, "card-gold", false, fullBody: true);
                 var colors = card.Button.colors;
                 colors.disabledColor = Color.white;
                 card.Button.colors = colors;
@@ -476,15 +476,9 @@ namespace KingdomRhapsody
             soundButton = TextButton(soundDialog, "SoundToggle", "", "buttons/secondary-blue",
                 new Rect(151, 174, 368, 108), 49, Gold, ToggleSound, Cue.Silent, out soundState);
 
-            deployDialog = Dialog("Deployment", "出戰配置", new Rect(125, 550, 750, 447), out _);
-            deploySummary = Label(deployDialog, "Loadout", "", new Rect(52, 68, 646, 239), 32, Ivory);
-            departBack = TextButton(deployDialog, "ReturnButton", "返回", "buttons/secondary-blue",
-                new Rect(215, 324, 320, 100), 49, Gold, CloseDialog, Cue.Back, out _);
-
             BuildTroopDetail();
             guardDialog.gameObject.SetActive(false);
             soundDialog.gameObject.SetActive(false);
-            deployDialog.gameObject.SetActive(false);
             layer.gameObject.SetActive(false);
         }
 
@@ -832,19 +826,33 @@ namespace KingdomRhapsody
 
         private void RefreshSound() => soundState.text = loadout.soundEnabled ? "已開啟" : "已靜音";
 
-        private void RequestBattle()
-        {
-            BattleLoadout selected = loadout.Snapshot();
-            if (BattleRequested != null)
-            {
-                BattleRequested.Invoke(selected);
-                return;
-            }
+        private void RequestBattle() => BattleRequested?.Invoke(loadout.Snapshot());
 
-            var names = Array.ConvertAll(loadout.deck, id => Roster.Name(id));
-            deploySummary.text = "左護衛 " + Roster.Name(selected.LeftGuard) + "  右護衛 " + Roster.Name(selected.RightGuard)
-                + "\n\n" + string.Join("  ", names, 0, 4) + "\n" + string.Join("  ", names, 4, 4);
-            OpenDialog(deployDialog, departBack);
+        private void BeginPractice(BattleLoadout selected)
+        {
+            if (practice != null)
+                return;
+
+            var battle = new GameObject("BattlePractice");
+            battle.transform.SetParent(transform, false);
+            practice = battle.AddComponent<BattlePractice>();
+            canvas.gameObject.SetActive(false);
+            EventSystem.current?.SetSelectedGameObject(null);
+            Font battleFont = Resources.Load<Font>("Lobby/Fonts/KingdomUiTCFull") ?? font;
+            practice.Open(selected, battleFont, ReturnFromPractice, PlayBattleCue);
+        }
+
+        private void ReturnFromPractice()
+        {
+            practice = null;
+            canvas.gameObject.SetActive(true);
+            ShowLobby();
+            Play(Cue.Back);
+        }
+
+        private void PlayBattleCue(string cue)
+        {
+            Play(cue == "deploy" ? Cue.Deploy : cue == "confirm" ? Cue.Confirm : Cue.Tap);
         }
 
         private void OpenDialog(RectTransform panel, Button start)
@@ -880,6 +888,8 @@ namespace KingdomRhapsody
 
         private void LateUpdate()
         {
+            if (practice != null)
+                return;
             FitSafeArea();
             if (activeDialog != null)
                 overlay.alpha = Mathf.MoveTowards(overlay.alpha, 1f, Time.unscaledDeltaTime * 9f);

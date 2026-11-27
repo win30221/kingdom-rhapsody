@@ -1,0 +1,38 @@
+{
+  "id": "axe-guard",
+  "size": 256,
+  "columns": 12,
+  "rows": 8,
+  "pixelsPerUnit": 100,
+  "pivotX": 0.5,
+  "pivotY": 0.2,
+  "clips": [
+    {
+      "path": "character-sprites/axe-guard/AxeGuard_Idle.png",
+      "pose": "Idle",
+      "frames": 12,
+      "fps": 8,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "e3cf67ac79e65cf8f10f8f43759bfa69d678b6c0ba2c072e6c69fb714802878f"
+    },
+    {
+      "path": "character-sprites/axe-guard/AxeGuard_Walk.png",
+      "pose": "Walk",
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "cue": 0,
+      "sourceHash": "87adf29847f3c6baebe67e6fa4a804f1cd79040fa693ea6e7eca17c511937b79"
+    },
+    {
+      "path": "character-sprites/axe-guard/AxeGuard_Sweep.png",
+      "pose": "Action",
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "cue": 6,
+      "sourceHash": "052d381d0ec3d56c71d2a7f0aca01146f03564e39b7ef888414e3507ec16ec21"
+    }
+  ]
+}
