@@ -16,8 +16,15 @@ namespace KingdomRhapsody
         private enum Cue { Silent, Tap, Back, Confirm, Deploy }
 
         private static readonly Vector2 DesignSize = new Vector2(1000, 1568);
-        private static readonly Rect LeftPosition = new Rect(77, 359, 306, 520);
-        private static readonly Rect RightPosition = new Rect(625, 359, 300, 520);
+        private const float HeaderHeight = 248f;
+        private const float LobbyFooterHeight = 648f;
+        private const float FormationHeight = 685f;
+        private const float DeckFooterHeight = 185f;
+        private const float DeckContentHeight = 1116f;
+        private const float MiddlePadding = 8f;
+        // Formation-local coordinates keep the three characters on a shared ground line.
+        private static readonly Rect LeftPosition = new Rect(77, 125, 306, 520);
+        private static readonly Rect RightPosition = new Rect(625, 125, 300, 520);
         private static readonly Color Ivory = new Color32(255, 243, 207, 255);
         private static readonly Color Gold = new Color32(255, 220, 129, 255);
         private static readonly Color Ink = new Color32(55, 30, 17, 255);
@@ -46,7 +53,9 @@ namespace KingdomRhapsody
         private RectTransform viewport;
         private RectTransform dialogViewport;
         private RectTransform home;
+        private RectTransform formation;
         private RectTransform deck;
+        private RectTransform deckContent;
         private RectTransform guardDialog;
         private RectTransform soundDialog;
         private RectTransform deployDialog;
@@ -174,34 +183,40 @@ namespace KingdomRhapsody
         private void BuildLobby()
         {
             home = Stretch(viewport, "Lobby");
-            Header(home, "GameTitle", "王國狂想", new Rect(235, 14, 530, 234), true);
-            IconButton(home, "SettingsButton", "gear", new Rect(882, 48, 88, 88), ShowSound, Cue.Tap);
 
-            Picture(home, "LeftShadow", "frames/ground-shadow", new Rect(91, 844, 273, 60));
-            Picture(home, "RightShadow", "frames/ground-shadow", new Rect(636, 844, 266, 60));
-            Picture(home, "PrinceShadow", "frames/ground-shadow", new Rect(302, 851, 394, 68));
-            leftGuard = Picture(home, "LeftGuard", "characters/royal-spearman", LeftPosition);
-            rightGuard = Picture(home, "RightGuard", "characters/royal-crossbowman", RightPosition);
-            var princeRect = new Rect(258, 234, 484, 652);
-            Image prince = Picture(home, "Prince", "characters/prince", princeRect);
+            RectTransform header = DesignGroup(home, "Header", new Vector2(.5f, 1f), HeaderHeight);
+            Header(header, "GameTitle", "王國狂想", new Rect(235, 14, 530, 234), true);
+            Button settings = IconButton(home, "SettingsButton", "gear", new Rect(0, 0, 88, 88), ShowSound, Cue.Tap);
+            Anchor((RectTransform)settings.transform, new Vector2(1f, 1f), new Vector2(-30f, -48f));
+
+            RectTransform middle = MiddleRegion(home, "CharacterRegion", HeaderHeight, LobbyFooterHeight);
+            formation = DesignGroup(middle, "Formation", new Vector2(.5f, .5f), FormationHeight);
+            Picture(formation, "LeftShadow", "frames/ground-shadow", new Rect(91, 610, 273, 60));
+            Picture(formation, "RightShadow", "frames/ground-shadow", new Rect(636, 610, 266, 60));
+            Picture(formation, "PrinceShadow", "frames/ground-shadow", new Rect(302, 617, 394, 68));
+            leftGuard = Picture(formation, "LeftGuard", "characters/royal-spearman", LeftPosition);
+            rightGuard = Picture(formation, "RightGuard", "characters/royal-crossbowman", RightPosition);
+            var princeRect = new Rect(258, 0, 484, 652);
+            Image prince = Picture(formation, "Prince", "characters/prince", princeRect);
             Fit(prince, prince.sprite, princeRect, true);
 
-            Picture(home, "GuardPanel", "frames/stone-panel", new Rect(50, 958, 900, 352), true);
-            Header(home, "GuardHeader", "護衛配置", new Rect(286, 920, 428, 103));
-            leftTile = GuardTile("LeftGuardButton", "左護衛", new Rect(95, 1064, 397, 161), true);
-            rightTile = GuardTile("RightGuardButton", "右護衛", new Rect(508, 1064, 397, 161), false);
+            RectTransform footer = DesignGroup(home, "Footer", new Vector2(.5f, 0f), LobbyFooterHeight);
+            Picture(footer, "GuardPanel", "frames/stone-panel", new Rect(50, 38, 900, 352), true);
+            Header(footer, "GuardHeader", "護衛配置", new Rect(286, 0, 428, 103));
+            leftTile = GuardTile(footer, "LeftGuardButton", "左護衛", new Rect(95, 144, 397, 161), true);
+            rightTile = GuardTile(footer, "RightGuardButton", "右護衛", new Rect(508, 144, 397, 161), false);
 
-            goToDeck = MakeButton(home, "TroopDeckButton", "buttons/secondary-blue",
-                new Rect(56, 1370, 386, 137), ShowDeck, Cue.Tap, out RectTransform deckArt, out _);
+            goToDeck = MakeButton(footer, "TroopDeckButton", "buttons/secondary-blue",
+                new Rect(56, 450, 386, 137), ShowDeck, Cue.Tap, out RectTransform deckArt, out _);
             Picture(deckArt, "CardsIcon", "icons/card-stack", new Rect(39, 39, 63, 63)).preserveAspect = true;
             Label(deckArt, "Label", "帶兵牌組", new Rect(101, 0, 253, 128), 50, Ivory);
-            TextButton(home, "DeployButton", "出戰", "buttons/primary-gold",
-                new Rect(453, 1358, 491, 159), 81, Ink, RequestBattle, Cue.Deploy, out _);
+            TextButton(footer, "DeployButton", "出戰", "buttons/primary-gold",
+                new Rect(453, 438, 491, 159), 81, Ink, RequestBattle, Cue.Deploy, out _);
         }
 
-        private Card GuardTile(string name, string role, Rect rect, bool left)
+        private Card GuardTile(Transform parent, string name, string role, Rect rect, bool left)
         {
-            Button button = MakeButton(home, name, "buttons/guard-slot", rect,
+            Button button = MakeButton(parent, name, "buttons/guard-slot", rect,
                 () => ShowGuards(left), Cue.Tap, out RectTransform visual, out _);
             var portraitRect = new Rect(23, 12, 144, 135);
             Image portrait = Picture(visual, "Portrait", null, portraitRect);
@@ -214,32 +229,38 @@ namespace KingdomRhapsody
         private void BuildDeck()
         {
             deck = Stretch(viewport, "TroopDeck");
-            backToLobby = IconButton(deck, "BackButton", "back", new Rect(33, 52, 88, 88), ShowLobby, Cue.Back);
-            Header(deck, "PageTitle", "帶兵牌組", new Rect(235, 14, 530, 234), true);
-            Picture(deck, "DeckPanel", "frames/stone-panel", new Rect(65, 260, 870, 625), true);
-            Header(deck, "DeckHeader", "出戰牌組", new Rect(287, 233, 426, 103));
-            Label(deck, "DeckCount", Roster.DeckSize + "/" + Roster.DeckSize, new Rect(789, 278, 94, 60), 36, Ivory);
+            RectTransform header = DesignGroup(deck, "Header", new Vector2(.5f, 1f), HeaderHeight);
+            Header(header, "PageTitle", "帶兵牌組", new Rect(235, 14, 530, 234), true);
+            backToLobby = IconButton(deck, "BackButton", "back", new Rect(0, 0, 88, 88), ShowLobby, Cue.Back);
+            Anchor((RectTransform)backToLobby.transform, new Vector2(0f, 1f), new Vector2(33f, -52f));
+
+            RectTransform middle = MiddleRegion(deck, "CardRegion", HeaderHeight, DeckFooterHeight);
+            deckContent = DesignGroup(middle, "CardContent", new Vector2(.5f, .5f), DeckContentHeight);
+            Picture(deckContent, "DeckPanel", "frames/stone-panel", new Rect(65, 27, 870, 625), true);
+            Header(deckContent, "DeckHeader", "出戰牌組", new Rect(287, 0, 426, 103));
+            Label(deckContent, "DeckCount", Roster.DeckSize + "/" + Roster.DeckSize, new Rect(789, 45, 94, 60), 36, Ivory);
 
             deckCards = new Card[Roster.DeckSize];
             for (int i = 0; i < deckCards.Length; i++)
             {
                 int slot = i;
-                deckCards[i] = MakeCard(deck, "Deck" + (i + 1),
-                    new Rect(111 + i % 4 * 199, 341 + i / 4 * 252, 181, 240), 31,
+                deckCards[i] = MakeCard(deckContent, "Deck" + (i + 1),
+                    new Rect(111 + i % 4 * 199, 108 + i / 4 * 252, 181, 240), 31,
                     () => { deckSlot = slot; RefreshDeck(); }, Cue.Tap);
             }
 
-            Picture(deck, "ReservesPanel", "frames/stone-panel", new Rect(65, 965, 870, 384), true);
-            Header(deck, "ReservesHeader", "兵種收藏", new Rect(287, 934, 426, 103));
+            Picture(deckContent, "ReservesPanel", "frames/stone-panel", new Rect(65, 732, 870, 384), true);
+            Header(deckContent, "ReservesHeader", "兵種收藏", new Rect(287, 701, 426, 103));
             reserveCards = new Card[Roster.Troops.Length - Roster.DeckSize];
             for (int i = 0; i < reserveCards.Length; i++)
             {
                 int slot = i;
-                reserveCards[i] = MakeCard(deck, "Reserve" + (i + 1), new Rect(170 + i * 222, 1043, 216, 280), 38,
+                reserveCards[i] = MakeCard(deckContent, "Reserve" + (i + 1), new Rect(170 + i * 222, 810, 216, 280), 38,
                     () => { replacement = reserveIds[slot]; RefreshDeck(); }, Cue.Tap);
             }
-            swap = TextButton(deck, "ReplaceCardButton", "", "buttons/primary-gold",
-                new Rect(218, 1383, 564, 140), 50, Ink, Replace, Cue.Confirm, out swapLabel);
+            RectTransform footer = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckFooterHeight);
+            swap = TextButton(footer, "ReplaceCardButton", "", "buttons/primary-gold",
+                new Rect(218, 0, 564, 140), 50, Ink, Replace, Cue.Confirm, out swapLabel);
         }
 
         private Card MakeCard(Transform parent, string name, Rect rect, int size, Action click, Cue cue)
@@ -508,8 +529,17 @@ namespace KingdomRhapsody
             lastScale = scale;
 
             var anchor = new Vector2(safe.center.x / screen.x, safe.center.y / screen.y);
-            float fit = Mathf.Min(safe.width / DesignSize.x, safe.height / DesignSize.y) / Mathf.Max(.001f, scale);
+            float pixelsPerUnit = Mathf.Min(safe.width / DesignSize.x, safe.height / DesignSize.y);
+            float fit = pixelsPerUnit / Mathf.Max(.001f, scale);
+
+            // Keep one uniform art scale, but let edge anchors use the entire safe area.
             Center(viewport, anchor, fit);
+            Vector2 safeSize = safe.size / pixelsPerUnit;
+            viewport.sizeDelta = safeSize;
+            FitMiddle(formation, safeSize.y - HeaderHeight - LobbyFooterHeight);
+            FitMiddle(deckContent, safeSize.y - HeaderHeight - DeckFooterHeight);
+
+            // Modal artwork retains its fixed design canvas and remains centered.
             Center(dialogViewport, anchor, fit);
         }
 
@@ -555,6 +585,34 @@ namespace KingdomRhapsody
             rect.anchorMax = Vector2.one;
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             return rect;
+        }
+
+        private static void Anchor(RectTransform rect, Vector2 anchor, Vector2 offset)
+        {
+            rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
+            rect.anchoredPosition = offset;
+        }
+
+        private static RectTransform DesignGroup(Transform parent, string name, Vector2 anchor, float height)
+        {
+            RectTransform rect = Node(parent, name);
+            Anchor(rect, anchor, Vector2.zero);
+            rect.sizeDelta = new Vector2(DesignSize.x, height);
+            return rect;
+        }
+
+        private static RectTransform MiddleRegion(Transform parent, string name, float top, float bottom)
+        {
+            RectTransform rect = Stretch(parent, name);
+            rect.offsetMin = new Vector2(0f, bottom);
+            rect.offsetMax = new Vector2(0f, -top);
+            return rect;
+        }
+
+        private static void FitMiddle(RectTransform rect, float availableHeight)
+        {
+            float factor = Mathf.Clamp01((availableHeight - 2f * MiddlePadding) / rect.sizeDelta.y);
+            rect.localScale = Vector3.one * factor;
         }
 
         private static void Position(RectTransform rect, Rect bounds)
