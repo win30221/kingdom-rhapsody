@@ -21,8 +21,19 @@ namespace KingdomRhapsody
         private const float FormationHeight = 685f;
         private const float DeckIdleFooterHeight = 40f;
         private const float DeckReplaceFooterHeight = 156f;
-        private const float DeckContentHeight = 1210f;
         private const float MiddlePadding = 8f;
+        private const int CardColumns = 4;
+        private const float TroopCardWidth = 181f;
+        private const float TroopCardHeight = 240f;
+        private const float CardColumnGap = 18f;
+        private const float CardRowGap = 22f;
+        private const float CardGridX = 111f;
+        private const float ReservePanelY = 728f;
+        private const float ReserveViewportX = 101f;
+        private const float ReserveViewportY = 808f;
+        private const float ReserveBottomInset = 38f;
+        private const float ReserveGridPadding = 12f;
+        private const float ReserveViewportWidth = 798f;
         // Formation-local coordinates keep the three characters on a shared ground line.
         private static readonly Rect LeftPosition = new Rect(77, 125, 306, 520);
         private static readonly Rect RightPosition = new Rect(625, 125, 300, 520);
@@ -66,6 +77,14 @@ namespace KingdomRhapsody
         private RectTransform deckContent;
         private RectTransform deckMiddle;
         private RectTransform deckFooter;
+        private RectTransform reservePanelRect;
+        private RectTransform reserveScrollRoot;
+        private RectTransform reserveViewport;
+        private RectTransform reserveGrid;
+        private ScrollRect reserveScroll;
+        private Scrollbar reserveScrollbar;
+        private Text reserveEmpty;
+        private GameObject lastDeckFocus;
         private RectTransform guardDialog;
         private RectTransform soundDialog;
         private RectTransform deployDialog;
@@ -273,7 +292,8 @@ namespace KingdomRhapsody
             Anchor((RectTransform)backToLobby.transform, new Vector2(0f, 1f), new Vector2(33f, -52f));
 
             deckMiddle = MiddleRegion(deck, "CardRegion", HeaderHeight, DeckIdleFooterHeight);
-            deckContent = DesignGroup(deckMiddle, "CardContent", new Vector2(.5f, .5f), DeckContentHeight);
+            deckContent = DesignGroup(deckMiddle, "CardContent", new Vector2(.5f, 1f), DesignSize.y - HeaderHeight - DeckIdleFooterHeight);
+            deckContent.anchoredPosition = new Vector2(0f, -MiddlePadding);
             Picture(deckContent, "DeckPanel", "frames/stone-panel", new Rect(65, 27, 870, 625), true);
             Header(deckContent, "DeckHeader", "出戰牌組", new Rect(287, 0, 426, 103));
             Label(deckContent, "DeckCount", Roster.DeckSize + "/" + Roster.DeckSize, new Rect(789, 45, 94, 60), 36, Ivory);
@@ -283,31 +303,16 @@ namespace KingdomRhapsody
             {
                 int slot = i;
                 deckCards[i] = MakeCard(deckContent, "Deck" + (i + 1),
-                    new Rect(111 + i % 4 * 199, 108 + i / 4 * 252, 181, 240), 31,
+                    TroopCardRect(i, CardGridX, 108f), 31,
                     () => SelectDeckSlot(slot), Cue.Tap);
             }
 
-            // Give the stone border its own space; center the cards inside the
-            // usable area below the title instead of resting them on the frame.
-            Rect reservePanel = new Rect(65, 748, 870, 462);
-            Rect reserveHeader = new Rect(287, 720, 426, 103);
-            Picture(deckContent, "ReservesPanel", "frames/stone-panel", reservePanel, true);
-            Header(deckContent, "ReservesHeader", "兵種收藏", reserveHeader);
-            reserveCards = new Card[Roster.Troops.Length - Roster.DeckSize];
-            const float reserveCardWidth = 208f;
-            const float reserveCardHeight = 270f;
-            const float reserveGap = 34f;
-            const float reserveBottomInset = 33f;
-            float rowWidth = reserveCards.Length * reserveCardWidth + Mathf.Max(0, reserveCards.Length - 1) * reserveGap;
-            float rowX = reservePanel.center.x - rowWidth * .5f;
-            float rowY = (reserveHeader.yMax + reservePanel.yMax - reserveBottomInset - reserveCardHeight) * .5f;
-            for (int i = 0; i < reserveCards.Length; i++)
-            {
-                int slot = i;
-                reserveCards[i] = MakeCard(deckContent, "Reserve" + (i + 1),
-                    new Rect(rowX + i * (reserveCardWidth + reserveGap), rowY, reserveCardWidth, reserveCardHeight), 36,
-                    () => SelectReserve(slot), Cue.Tap);
-            }
+            // The roster uses the same four-column grid as the active deck.
+            // Only the collection scrolls; the eight deployment slots stay in place.
+            reservePanelRect = Picture(deckContent, "ReservesPanel", "frames/stone-panel",
+                new Rect(65, ReservePanelY, 870, 490), true).rectTransform;
+            Header(deckContent, "ReservesHeader", "兵種收藏", new Rect(287, 697, 426, 103));
+            BuildReserveScroll();
             deckFooter = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckIdleFooterHeight);
             replaceBar = Box(deckFooter, "ReplacePrompt", new Rect(50, 0, 900, 140));
             replaceHint = Label(replaceBar, "Hint", "", new Rect(0, 0, 620, 132), 38, Ivory);
@@ -333,6 +338,65 @@ namespace KingdomRhapsody
             addCard = TextButton(cardActionMenu, "AddCard", "上陣", "buttons/primary-gold",
                 new Rect(228, 0, 208, 104), 44, Ink, AddSelected, Cue.Confirm, out _);
             cardActionLayer.gameObject.SetActive(false);
+        }
+
+        private static Rect TroopCardRect(int index, float x, float y)
+        {
+            return new Rect(x + index % CardColumns * (TroopCardWidth + CardColumnGap),
+                y + index / CardColumns * (TroopCardHeight + CardRowGap), TroopCardWidth, TroopCardHeight);
+        }
+
+        private void BuildReserveScroll()
+        {
+            reserveScrollRoot = Box(deckContent, "ReserveScroll",
+                new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth + 12f, TroopCardHeight + 24f));
+            reserveScroll = reserveScrollRoot.gameObject.AddComponent<ScrollRect>();
+            reserveScroll.horizontal = false;
+            reserveScroll.vertical = true;
+            reserveScroll.movementType = ScrollRect.MovementType.Clamped;
+            reserveScroll.inertia = true;
+            reserveScroll.scrollSensitivity = 90f;
+
+            reserveViewport = Box(reserveScrollRoot, "Viewport",
+                new Rect(0, 0, ReserveViewportWidth, TroopCardHeight + 24f));
+            var touchArea = reserveViewport.gameObject.AddComponent<Image>();
+            touchArea.color = Color.clear;
+            touchArea.raycastTarget = true;
+            reserveViewport.gameObject.AddComponent<RectMask2D>();
+            reserveGrid = Box(reserveViewport, "CollectionGrid",
+                new Rect(0, 0, ReserveViewportWidth, TroopCardHeight + 24f));
+            reserveScroll.viewport = reserveViewport;
+            reserveScroll.content = reserveGrid;
+
+            RectTransform track = Box(reserveScrollRoot, "ScrollTrack",
+                new Rect(ReserveViewportWidth + 2f, 0, 10, TroopCardHeight + 24f));
+            var trackImage = track.gameObject.AddComponent<Image>();
+            trackImage.color = new Color32(20, 32, 55, 215);
+            reserveScrollbar = track.gameObject.AddComponent<Scrollbar>();
+            RectTransform sliding = Stretch(track, "SlidingArea");
+            sliding.offsetMin = new Vector2(1f, 2f);
+            sliding.offsetMax = new Vector2(-1f, -2f);
+            var handle = Stretch(sliding, "Handle").gameObject.AddComponent<Image>();
+            handle.color = new Color32(218, 172, 74, 255);
+            reserveScrollbar.direction = Scrollbar.Direction.BottomToTop;
+            reserveScrollbar.handleRect = handle.rectTransform;
+            reserveScrollbar.targetGraphic = handle;
+            reserveScrollbar.navigation = new Navigation { mode = Navigation.Mode.None };
+            reserveScroll.verticalScrollbar = reserveScrollbar;
+            reserveScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+
+            // All reserves are populated from the roster, not a hard-coded row count.
+            reserveCards = new Card[Mathf.Max(0, Roster.Troops.Length - Roster.DeckSize)];
+            for (int i = 0; i < reserveCards.Length; i++)
+            {
+                int slot = i;
+                reserveCards[i] = MakeCard(reserveGrid, "Reserve" + (i + 1),
+                    TroopCardRect(i, CardGridX - ReserveViewportX, ReserveGridPadding), 31,
+                    () => SelectReserve(slot), Cue.Tap);
+            }
+            reserveEmpty = Label(reserveViewport, "EmptyCollection", "沒有未上陣的兵種",
+                new Rect(0, 0, ReserveViewportWidth, TroopCardHeight), 36, Ivory);
+            reserveEmpty.gameObject.SetActive(reserveCards.Length == 0);
         }
 
         private Card MakeCard(Transform parent, string name, Rect rect, int size, Action click, Cue cue)
@@ -520,6 +584,9 @@ namespace KingdomRhapsody
             pendingTroop = null;
             flashSlot = -1;
             RefreshDeck();
+            reserveScroll.StopMovement();
+            SetReserveOffset(0f);
+            lastDeckFocus = null;
         }
 
         private void RefreshDeck()
@@ -585,6 +652,7 @@ namespace KingdomRhapsody
         private void OpenCardActions(Card card, string id)
         {
             CloseCardActions();
+            reserveScroll.StopMovement();
             selectedCard = card;
             selectedTroop = id;
             addCard.gameObject.SetActive(IsReserve(id));
@@ -794,6 +862,7 @@ namespace KingdomRhapsody
                 overlay.alpha = Mathf.MoveTowards(overlay.alpha, 1f, Time.unscaledDeltaTime * 9f);
             if (deck.gameObject.activeSelf)
             {
+                FollowReserveFocus();
                 LayoutCardActions();
                 UpdateDeckEffects();
             }
@@ -854,12 +923,92 @@ namespace KingdomRhapsody
 
         private void LayoutDeckRegions()
         {
-            // Only replacement mode needs a permanent instruction/cancel row.
-            // In ordinary browsing, reclaim the unused footer for the card area.
-            float footerHeight = pendingTroop == null ? DeckIdleFooterHeight : DeckReplaceFooterHeight;
+            // The active cards never move when the cancel row appears. The
+            // collection viewport absorbs the height change instead.
+            bool replacing = pendingTroop != null;
+            float footerHeight = replacing ? DeckReplaceFooterHeight : DeckIdleFooterHeight;
             deckMiddle.offsetMin = new Vector2(0f, footerHeight);
             deckFooter.sizeDelta = new Vector2(DesignSize.x, footerHeight);
-            FitMiddle(deckContent, viewport.rect.height - HeaderHeight - footerHeight);
+
+            float height = Mathf.Max(1f, viewport.rect.height - HeaderHeight - footerHeight - 2f * MiddlePadding);
+            deckContent.sizeDelta = new Vector2(DesignSize.x, height);
+            deckContent.localScale = Vector3.one;
+            Position(reservePanelRect, new Rect(65, ReservePanelY, 870, Mathf.Max(1f, height - ReservePanelY)));
+
+            float viewHeight = Mathf.Max(1f, height - ReserveViewportY - ReserveBottomInset);
+            Position(reserveScrollRoot, new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth + 12f, viewHeight));
+            Position(reserveViewport, new Rect(0, 0, ReserveViewportWidth, viewHeight));
+            Position((RectTransform)reserveScrollbar.transform,
+                new Rect(ReserveViewportWidth + 2f, 0, 10, viewHeight));
+
+            int rows = (reserveCards.Length + CardColumns - 1) / CardColumns;
+            float cardsHeight = rows == 0 ? 0f : rows * TroopCardHeight + (rows - 1) * CardRowGap;
+            float naturalHeight = cardsHeight + 2f * ReserveGridPadding;
+            float contentHeight = Mathf.Max(viewHeight, naturalHeight);
+            float previousOffset = reserveGrid.anchoredPosition.y;
+            reserveGrid.sizeDelta = new Vector2(ReserveViewportWidth, contentHeight);
+
+            // A short list is vertically centered but retains the same left-aligned
+            // column positions; additional rows scroll without shrinking the tiles.
+            float firstRowY = Mathf.Max(ReserveGridPadding, (viewHeight - cardsHeight) * .5f);
+            for (int i = 0; i < reserveCards.Length; i++)
+                Position((RectTransform)reserveCards[i].Button.transform,
+                    TroopCardRect(i, CardGridX - ReserveViewportX, firstRowY));
+            Position(reserveEmpty.rectTransform, new Rect(0, 0, ReserveViewportWidth, viewHeight));
+
+            bool overflow = naturalHeight > viewHeight + .5f && rows > 0;
+            reserveScroll.vertical = overflow && !replacing;
+            reserveScrollbar.gameObject.SetActive(overflow);
+            reserveScrollbar.interactable = overflow && !replacing;
+            if (!overflow || replacing)
+                reserveScroll.StopMovement();
+            SetReserveOffset(previousOffset);
+
+            int selectedIndex = replacing ? Array.IndexOf(reserveIds, pendingTroop) : Array.IndexOf(reserveCards, selectedCard);
+            if (selectedIndex >= 0)
+                EnsureReserveVisible(selectedIndex);
+        }
+
+        private void SetReserveOffset(float y)
+        {
+            float maxOffset = Mathf.Max(0f, reserveGrid.rect.height - reserveViewport.rect.height);
+            reserveGrid.anchoredPosition = new Vector2(0f, Mathf.Clamp(y, 0f, maxOffset));
+        }
+
+        private void EnsureReserveVisible(int index)
+        {
+            if (index < 0 || index >= reserveCards.Length)
+                return;
+            var tile = (RectTransform)reserveCards[index].Button.transform;
+            float top = -tile.anchoredPosition.y;
+            float bottom = top + tile.rect.height;
+            float offset = reserveGrid.anchoredPosition.y;
+            float viewHeight = reserveViewport.rect.height;
+            if (top < offset + ReserveGridPadding)
+                SetReserveOffset(top - ReserveGridPadding);
+            else if (bottom > offset + viewHeight - ReserveGridPadding)
+                SetReserveOffset(bottom + ReserveGridPadding - viewHeight);
+        }
+
+        private void FollowReserveFocus()
+        {
+            // Keep keyboard/controller navigation visible without fighting drag or
+            // mouse-wheel scrolling when the currently focused tile has not changed.
+            GameObject current = EventSystem.current?.currentSelectedGameObject;
+            if (current == lastDeckFocus)
+                return;
+            lastDeckFocus = current;
+            if (current == null || pendingTroop != null || cardActionLayer.gameObject.activeSelf ||
+                activeDialog != null || Input.GetMouseButton(0) || Input.touchCount > 0)
+                return;
+            for (int i = 0; i < reserveCards.Length; i++)
+            {
+                if (reserveCards[i].Button.gameObject != current)
+                    continue;
+                reserveScroll.StopMovement();
+                EnsureReserveVisible(i);
+                break;
+            }
         }
 
         private static Rect VisibleArtworkSafeArea(Vector2Int screen, Rect safe, Sprite art)
