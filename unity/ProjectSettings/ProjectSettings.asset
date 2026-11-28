@@ -13,4 +13,5 @@ PlayerSettings:
   defaultIsNativeResolution: 0
   fullscreenMode: 3
   resizableWindow: 1
+  webGLTemplate: PROJECT:KingdomRhapsodyFullscreen
   activeInputHandler: 0

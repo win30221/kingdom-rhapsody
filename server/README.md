@@ -20,6 +20,8 @@ go run .
 
 Unity Editor 和桌面 Player 預設使用 `http://127.0.0.1:18120`。在同一台電腦開啟兩個同版本客戶端，從大廳進入「出戰」→「雙人對戰」即可配對。用 `/healthz` 檢查 Go 服務。
 
+WebGL 建置使用滿版網頁範本，畫布會隨瀏覽器視窗縮放。寬螢幕視窗可點右下角的「全螢幕」進入瀏覽器全螢幕。
+
 WebGL 預設連遊戲頁面的同一個來源，傳輸模組由成品的 `StreamingAssets/KingdomRhapsody/transport.js` 載入。用 `-web` 指定含 `index.html` 的成品資料夾，Go 即可同源提供遊戲與 WebSocket。下例從倉庫根目錄啟動。
 
 ```powershell
