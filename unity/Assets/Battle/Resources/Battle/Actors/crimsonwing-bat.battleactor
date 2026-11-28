@@ -23,7 +23,8 @@
       "fps": 24,
       "loop": true,
       "cue": 0,
-      "sourceHash": "048c8f5d2156d081d3f7a97e350d953b91879dc9bd21794d00d85ca380df2429"
+      "sourceHash": "048c8f5d2156d081d3f7a97e350d953b91879dc9bd21794d00d85ca380df2429",
+      "inbetween": true
     },
     {
       "path": "character-sprites/crimsonwing-bat/CrimsonwingBat_Bite.png",

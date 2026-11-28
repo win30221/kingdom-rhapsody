@@ -24,7 +24,8 @@
       "loop": true,
       "cue": 0,
       "sourceHash": "57ae88460a6536c08c0c6c8e09b816905c4cbc21455832d2e2381e27f90a7edd",
-      "edgeAlpha": 124
+      "edgeAlpha": 124,
+      "inbetween": true
     },
     {
       "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Lash.png",

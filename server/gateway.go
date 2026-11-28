@@ -76,16 +76,19 @@ func (client *peer) send(data []byte) {
 }
 
 func (client *peer) writer() {
+	defer client.close()
 	for {
 		select {
 		case <-client.ctx.Done():
 			return
-		case data := <-client.out:
+		case data, queued := <-client.out:
+			if !queued {
+				return
+			}
 			deadline, stop := context.WithTimeout(client.ctx, 4*time.Second)
 			err := client.wire.Write(deadline, data)
 			stop()
 			if err != nil {
-				client.close()
 				return
 			}
 		}
@@ -98,8 +101,7 @@ type gateway struct {
 	version                int
 	cards                  map[string]bool
 	capacity, connections  chan struct{}
-	origins                []string
-	originHosts            []string
+	originPatterns         []string
 	mu                     sync.Mutex
 	waiting                *peer
 }
@@ -127,8 +129,7 @@ func (app *gateway) routes(browser, web string, origins []string) (http.Handler,
 			strings.ContainsAny(u.Host, "*?[]") {
 			return nil, errors.New("each -origins item must be an exact HTTP(S) origin")
 		}
-		app.origins = append(app.origins, u.Scheme+"://"+u.Host)
-		app.originHosts = append(app.originHosts, u.Host)
+		app.originPatterns = append(app.originPatterns, u.Scheme+"://"+u.Host)
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -136,13 +137,6 @@ func (app *gateway) routes(browser, web string, origins []string) (http.Handler,
 	})
 	mux.HandleFunc("GET /ws", app.websocket)
 	mux.HandleFunc("GET /transport.js", func(w http.ResponseWriter, r *http.Request) {
-		for _, origin := range app.origins {
-			if r.Header.Get("Origin") == origin {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				break
-			}
-		}
-		w.Header().Set("Vary", "Origin")
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		http.ServeFile(w, r, browser)
 	})
@@ -192,14 +186,14 @@ func (app *gateway) websocket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "servers busy", http.StatusServiceUnavailable)
 		return
 	}
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: app.originHosts, CompressionMode: websocket.CompressionContextTakeover})
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: app.originPatterns, CompressionMode: websocket.CompressionContextTakeover})
 	if err != nil {
 		return
 	}
 	ctx, cancel := context.WithCancel(app.ctx)
 	wire := transport.NewBinaryWebSocket(conn, transport.DefaultBinaryLimit)
 	client := &peer{
-		ctx: ctx, close: func() { cancel(); wire.Close() }, wire: wire,
+		ctx: ctx, close: sync.OnceFunc(func() { cancel(); wire.Close() }), wire: wire,
 		out: make(chan []byte, 48), place: make(chan assignment, 1),
 	}
 	defer client.close()
@@ -224,8 +218,8 @@ func (app *gateway) websocket(w http.ResponseWriter, r *http.Request) {
 	go client.writer()
 	client.send(jsonBytes(notice{Type: "waiting"}))
 	if !app.join(client) {
-		// The writer may close after it has delivered this terminal status.
 		client.send(jsonBytes(notice{Type: "error", Code: "server_busy"}))
+		close(client.out)
 	}
 	app.readCommands(client)
 }
@@ -330,6 +324,10 @@ func (app *gateway) runRoom(game *room) {
 	defer func() {
 		close(game.done)
 		<-app.capacity
+		// The writer delivers the terminal state and any remaining replies before closing.
+		for _, client := range game.peers {
+			close(client.out)
+		}
 	}()
 	ctx, cancel := context.WithTimeout(app.ctx, 265*time.Second)
 	defer cancel()

@@ -23,7 +23,8 @@
       "fps": 16,
       "loop": true,
       "cue": 0,
-      "sourceHash": "8acfaebe30cad66ca741ad25dec3ecfa468b4b984dfc29a7014bdce13886f480"
+      "sourceHash": "8acfaebe30cad66ca741ad25dec3ecfa468b4b984dfc29a7014bdce13886f480",
+      "inbetween": true
     },
     {
       "path": "character-sprites/venom-toad/VenomToad_Spit.png",

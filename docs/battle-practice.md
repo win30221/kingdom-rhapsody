@@ -24,7 +24,7 @@
 - [GameNetKit](https://github.com/win30221/gamenetkit/tree/8e923249f68d71a343a3224200494603ed8712ea) 的 Core、Interpolation、Replication 和 Transport 封裝在 `unity/Packages/`。畫面使用 30 Hz 模擬及 15 Hz 例行快照。傷害和狀態切換會追加同 tick 快照，讓畫面上的王子 HP、場上血條、部署權與特效使用同一個呈現時間。
 - 晶甲犰狳無盾時維持暗色，回盾幀與盾值同步。赤翼蝠獸在嗜血期間有紅色外觀和持續標記。中毒、減速、暈眩與軍旗增益都有戰場標記。結算前會先播完最後命中與退場。
 - 前景的法術和投射物由遊戲繪製，主要事件有短音效並共用大廳靜音設定。戰場版面盡量使用直式安全區高度，過窄時只裁左右邊緣，保留最外側格子的中心與操作區。
-- 八向動畫由 [animation-roster.json](../art/character-sprites/animation-roster.json) 定義。匯入時同圖影格共用貼圖格，保留各自的節奏與命中點。長停格使用過渡，移動循環隨實際位移取樣。花妖和弩手的指定邊緣修正是在匯入時套用。更新素材或配置後執行 `python3 tools/sync_battle_actors.py`。
+- 移動循環隨實際位移取樣，每次顯示一張精靈圖。六個異獸的移動動畫在匯入時為重複影格補上中間姿勢，保留原始關鍵姿勢、錨點、每秒格數與出手點。其餘同圖影格共用貼圖格。花妖和弩手的指定邊緣修正也在匯入時套用。更新素材或配置後執行 `python3 tools/sync_battle_actors.py`。[動畫設定](../art/character-sprites/animation-roster.json)
 - `python3 tools/Prepare-BattleSounds.py` 可重建戰鬥 WAV，`python3 tools/Prepare-LobbyFont.py` 可更新新文案的繁中字型子集。
 
 ## 從稽核到修正
@@ -43,6 +43,14 @@
 dotnet run --project tools/battle-smoke/BattleSmoke.csproj
 ```
 
-這次 23 項 .NET 規則測試通過，雙連線 Go 整合測試連續通過兩次。用 Unity `6000.6.8f1` 的組件編譯對戰原生、WebGL 條件分支及匯入器，皆無編譯錯誤。這輪驗證未執行 Unity Play Mode。
+這組 .NET 測試也涵蓋裂地移出場外取消、棄權時的同 tick 終局、不同到包順序的能量預扣，以及目標提前死亡時的火炮與火焰爆炸中心。
+
+從倉庫根目錄用 Node.js 22 以上版本執行 WebGL 橋接回歸。
+
+```sh
+node --test tools/battle-smoke/webgl-transport.test.mjs
+```
+
+橋接測試模擬 8 秒未取包，確認恢復時使用最新狀態，終局和命令回覆會依序送給 Unity。上線前仍需在 Unity WebGL 成品測試實際切換分頁。
 
 第一次在 Unity 驗收時，用兩個客戶端完成一局，並分別測左右護衛、重疊格、四指手勢與裂地方向。手機 9:16 和 9:20 都測最外側格。錄下弩手命中、犰狳無盾五秒、蝠獸嗜血和結算前的退場，並量測第一次進場與再戰的幀時間和貼圖記憶體。

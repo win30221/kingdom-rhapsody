@@ -169,6 +169,26 @@ namespace KingdomRhapsody
 
         internal Vector2 Position(BattleActorFrame actor, out BattleActorFrame pose) => Position(actor, out pose, out _);
 
+        internal Vector2 ProjectileTarget(BattleEffect projectile, IReadOnlyList<BattleEffect> effects)
+        {
+            if (projectile.TrackingKey == null)
+                return projectile.Target;
+            if (Actors.TryGetValue(projectile.TrackingKey, out BattleActorFrame actor))
+                return Position(actor, out _);
+
+            for (int i = effects.Count - 1; i >= 0; i--)
+            {
+                BattleEffect death = effects[i];
+                if (death.Kind == EffectKind.Death && death.TrackingKey == projectile.TrackingKey &&
+                    death.Begin >= projectile.Begin && death.Begin <= RenderTick)
+                    return death.Target;
+            }
+            for (int i = buffer.Count - 1; i >= 0 && buffer[i].Tick >= projectile.Begin; i--)
+                if (buffer[i].Tick <= RenderTick && buffer[i].Value.ById.TryGetValue(projectile.TrackingKey, out actor))
+                    return actor.Position;
+            return projectile.Target;
+        }
+
         internal Vector2 Position(BattleActorFrame actor, out BattleActorFrame pose, out double walkPhase)
         {
             pose = actor;

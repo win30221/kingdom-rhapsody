@@ -23,7 +23,8 @@
       "fps": 16,
       "loop": true,
       "cue": 0,
-      "sourceHash": "7ac398f9073ab4be5e13d9fd73731e22dbee50458a3ad070617915e149eb12f3"
+      "sourceHash": "7ac398f9073ab4be5e13d9fd73731e22dbee50458a3ad070617915e149eb12f3",
+      "inbetween": true
     },
     {
       "path": "character-sprites/sunder-pangolin/SunderPangolin_Claw.png",

@@ -4,21 +4,58 @@ mergeInto(LibraryManager.library, {
   $RBLab: {
     next: 1, states: {},
     create: function(){if(Object.keys(RBLab.states).length>=64)return 0;var id=RBLab.next++;RBLab.states[id]={epoch:0,connection:null};return id;},
-    close: function(id){var state=RBLab.states[id];if(!state)return;state.epoch++;if(state.connection)state.connection.close();state.connection=null;state.packets=[];state.binary=false;},
-    load: function(runtime){
-      if(!runtime||runtime==='/transport.js')return import('/transport.js');
-      return import(new URL(runtime,globalThis.document?document.baseURI:globalThis.location?location.href:undefined).href);
+    close: function(id){var state=RBLab.states[id];if(!state)return;state.epoch++;if(state.connection)state.connection.close();state.connection=null;state.packets=[];state.failure=null;state.binary=false;},
+    runtimeURL: function(runtime){
+      var url=new URL(runtime||'/transport.js',globalThis.document?document.baseURI:location.href);
+      if((url.protocol!=='https:'&&url.protocol!=='http:')||url.origin!==location.origin)
+        throw new Error('The transport module must be served from the game origin');
+      return url.href;
     },
-    open: function(id,url,hello,hash,target,useWT,runtime,binary){
+    load: function(runtime){return import(RBLab.runtimeURL(runtime));},
+    queueBattlePacket: function(packets,packet,decoder){
+      var message;
+      try{message=JSON.parse(decoder.decode(packet.data));}catch(e){}
+      if(message&&typeof message.match==='string'){
+        packet.match=message.match;
+        if(message.type==='state'&&message.state&&Number.isInteger(message.state.tick)){
+          packet.snapshot=message.replaceable===true&&message.state.winner===-2;
+          for(var i=packets.length-1;i>=0;i--){
+            var older=packets[i];
+            // Keep a short effect history for interpolation when Unity resumes.
+            if(older.match===packet.match&&(older.snapshot||
+              Number.isFinite(older.effectsThrough)&&older.effectsThrough+6<message.state.tick))
+              packets.splice(i,1);
+          }
+        }else if(message.type==='effects'&&Array.isArray(message.effects)&&message.effects.length){
+          var end=0;
+          for(var effect of message.effects)
+            end=effect&&Number.isInteger(effect.end)?Math.max(end,effect.end):Infinity;
+          packet.effectsThrough=end;
+        }
+      }
+      if(packets.length>=64){
+        var cosmetic=packets.findIndex(function(older){return Number.isFinite(older.effectsThrough);});
+        if(cosmetic>=0)packets.splice(cosmetic,1);
+        else if(Number.isFinite(packet.effectsThrough))return true;
+        else return false;
+      }
+      packets.push(packet);
+      return true;
+    },
+    open: function(id,url,hello,hash,target,useWT,runtime,binary,coalesceBattleSnapshots){
       var state=RBLab.states[id];if(!state)return;
       RBLab.close(id);var attempt=state.epoch;state.target=target;state.binary=!!binary;state.packets=[];
       var failed=false;state.failed=false;
+      var decoder=binary&&coalesceBattleSnapshots?new TextDecoder('utf-8',{fatal:true}):null;
       var active=function(){return RBLab.states[id]===state&&attempt===state.epoch&&!failed;};
       var notify=function(message,receivedMS){
         if(!active())return;
         if(binary){
-          if(state.packets.length>=64){state.packets=[];fail('receive_overflow');return;}
-          state.packets.push({data:message,receivedMS:receivedMS});
+          var packet={data:message,receivedMS:receivedMS};
+          if(decoder){
+            if(!RBLab.queueBattlePacket(state.packets,packet,decoder))fail('receive_overflow');
+          }else if(state.packets.length<64)state.packets.push(packet);
+          else{state.packets=[];fail('receive_overflow');}
         }else SendMessage(target,'OnTransportMessage',message);
       };
       var fail=function(code){
@@ -26,8 +63,7 @@ mergeInto(LibraryManager.library, {
         var connection=state.connection;failed=true;state.failed=true;state.connection=null;
         if(connection)connection.close();
         if(binary){
-          if(state.packets.length>=64){state.packets=[];code='receive_overflow';}
-          state.packets.push({error:code,receivedMS:performance.now()});
+          state.failure={error:code,receivedMS:performance.now()};
         }else SendMessage(target,'OnTransportMessage',JSON.stringify({type:'error',code:code}));
       };
       state.fail=fail;
@@ -50,8 +86,8 @@ mergeInto(LibraryManager.library, {
     }
   },
   RB_OpenBinary__deps: ['$RBLab'],
-  RB_OpenBinary: function(id,url,ptr,length,runtime){
-    RBLab.open(id,UTF8ToString(url),HEAPU8.slice(ptr,ptr+length),'','',0,UTF8ToString(runtime),true);
+  RB_OpenBinary: function(id,url,ptr,length,runtime,coalesceBattleSnapshots){
+    RBLab.open(id,UTF8ToString(url),HEAPU8.slice(ptr,ptr+length),'','',0,UTF8ToString(runtime),true,coalesceBattleSnapshots);
   },
   RB_TrySendBytes__deps: ['$RBLab'],
   RB_TrySendBytes: function(id,ptr,length){
@@ -62,10 +98,12 @@ mergeInto(LibraryManager.library, {
   RB_PollPacket__deps: ['$RBLab'],
   RB_PollPacket: function(id,ptr,capacity,time,error){
     var state=RBLab.states[id];
-    if(!state||!state.binary||!state.packets.length)return -1;
-    var packet=state.packets[0];
+    if(!state||!state.binary)return -1;
+    var packet=state.packets[0]||state.failure;
+    if(!packet)return -1;
     if(packet.data&&packet.data.length>capacity)return -1;
-    state.packets.shift();
+    if(state.packets.length)state.packets.shift();
+    else state.failure=null;
     var codes={connection_closed:1,connection_timeout:2,invalid_server_message:3,receive_overflow:4,send_failed:5,transport_unsupported:6,invalid_client_message:7};
     setValue(time,packet.receivedMS,'double');setValue(error,packet.error?(codes[packet.error]||1):0,'i32');
     if(packet.data)HEAPU8.set(packet.data,ptr);

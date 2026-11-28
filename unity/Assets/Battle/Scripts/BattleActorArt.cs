@@ -54,57 +54,14 @@ namespace KingdomRhapsody
             return clip != null ? new ActionTiming(clip.frames, clip.fps, clip.cue) : ActionTiming.Standard;
         }
 
-        internal readonly struct Sample
-        {
-            internal readonly Sprite Primary, Next;
-            internal readonly float Blend;
-
-            internal Sample(Sprite primary, Sprite next = null, float blend = 0)
-            {
-                Primary = primary;
-                Next = next;
-                Blend = blend;
-            }
-        }
-
-        internal Sprite Frame(BattleActorArt art, BattlePose pose, int direction, double elapsed, int playTicks) =>
-            Evaluate(art, pose, direction, elapsed, playTicks).Primary;
-
-        internal Sample Evaluate(BattleActorArt art, BattlePose pose, int direction, double elapsed, int playTicks)
+        internal Sprite Frame(BattleActorArt art, BattlePose pose, int direction, double elapsed, int playTicks)
         {
             BattleActorArt.Clip clip = art.Find(pose);
             double progress = Math.Max(0, elapsed);
             double sample = clip.loop
                 ? progress * clip.fps / BattleMatch.TickRate % clip.frames
                 : Math.Min(clip.frames - 1, progress * clip.frames / Math.Max(1, playTicks));
-            int frame = (int)sample;
-            int row = direction * clip.frames;
-            int cell = clip.cells[row + frame];
-            Sprite primary = GetFrame(art, clip, cell);
-
-            int after = 1;
-            while (after < clip.frames && (clip.loop || frame + after < clip.frames) &&
-                clip.cells[row + (frame + after) % clip.frames] == cell)
-                after++;
-            if (after >= clip.frames || !clip.loop && frame + after >= clip.frames)
-                return new Sample(primary);
-
-            int next = (frame + after) % clip.frames;
-            if (!clip.loop && (frame == clip.cue || next == clip.cue || pose is BattlePose.ShieldBreak or BattlePose.ShieldRegrow))
-                return new Sample(primary);
-
-            int before = 0;
-            while (before + after < clip.frames && (clip.loop || frame - before > 0) &&
-                clip.cells[row + (frame - before - 1 + clip.frames) % clip.frames] == cell)
-                before++;
-            if (before + after == 1)
-                return new Sample(primary);
-
-            // Ease across the last portion of a held pose. Clip length and the
-            // authored contact frame stay the same in the simulation.
-            float fraction = (float)((before + sample - frame) / (before + after));
-            float blend = Mathf.SmoothStep(0, 1, Mathf.Clamp01((fraction - .38f) / .62f));
-            return blend <= 0 ? new Sample(primary) : new Sample(primary, GetFrame(art, clip, clip.cells[row + next]), blend);
+            return GetFrame(art, clip, clip.cells[direction * clip.frames + (int)sample]);
         }
 
         private Sprite GetFrame(BattleActorArt art, BattleActorArt.Clip clip, int cell)

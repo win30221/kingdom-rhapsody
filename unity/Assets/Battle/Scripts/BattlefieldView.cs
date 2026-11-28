@@ -34,10 +34,10 @@ namespace KingdomRhapsody
 
         private sealed class Pawn
         {
-            internal readonly VisualElement Root, Art, NextArt, Health, Shield, Flash;
+            internal readonly VisualElement Root, Art, Health, Shield, Flash;
             internal readonly VisualElement[] Markers = new VisualElement[5];
             internal readonly BattleActorArt Model;
-            internal Sprite Frame, NextFrame;
+            internal Sprite Frame;
             internal int Depth, Facing = -1;
             internal double FadeFrom = -1;
 
@@ -62,10 +62,7 @@ namespace KingdomRhapsody
                 Root.Add(Flash);
                 float top = -size * (1 - (model ? model.pivot.y : .2f));
                 Art = BattleView.Box(-size * .5f, top, size, size);
-                NextArt = BattleView.Box(-size * .5f, top, size, size);
-                NextArt.style.display = DisplayStyle.None;
                 Root.Add(Art);
-                Root.Add(NextArt);
                 float barWidth = actor.IsPrince ? 40 : actor.IsGuard ? 33 : 25;
                 var meter = BattleView.Box(-barWidth / 2, -size * .69f, barWidth, actor.IsPrince ? 5 : 3);
                 meter.style.backgroundColor = (Color)new Color32(14, 25, 27, 245);
@@ -228,7 +225,7 @@ namespace KingdomRhapsody
                 else
                 {
                     pawn.Root.style.opacity = 1 - fade;
-                    pawn.Art.style.scale = pawn.NextArt.style.scale = new Scale(new Vector2(1 + .10f * fade, 1 - .28f * fade));
+                    pawn.Art.style.scale = new Scale(new Vector2(1 + .10f * fade, 1 - .28f * fade));
                 }
             }
             foreach (string key in missing)
@@ -263,7 +260,12 @@ namespace KingdomRhapsody
                     Mathf.Abs(Mathf.DeltaAngle(pawn.Facing * 45, angle)) > 26)
                     pawn.Facing = direction;
                 double elapsed = pose.Pose == BattlePose.Walk ? walkPhase : effectTick - pose.PoseTick;
-                PaintPose(pawn, art.Evaluate(pawn.Model, pose.Pose, pawn.Facing, elapsed, pose.PoseLength));
+                Sprite frame = art.Frame(pawn.Model, pose.Pose, pawn.Facing, elapsed, pose.PoseLength);
+                if (frame != pawn.Frame)
+                {
+                    BattleView.Image(pawn.Art, frame);
+                    pawn.Frame = frame;
+                }
             }
 
             for (int i = 1; i < actors.childCount; i++)
@@ -272,23 +274,6 @@ namespace KingdomRhapsody
                     actors.Sort(byDepth);
                     break;
                 }
-        }
-
-        private static void PaintPose(Pawn pawn, BattleArt.Sample pose)
-        {
-            if (pose.Primary != pawn.Frame)
-            {
-                BattleView.Image(pawn.Art, pose.Primary);
-                pawn.Frame = pose.Primary;
-            }
-            if (pose.Next != pawn.NextFrame)
-            {
-                BattleView.Image(pawn.NextArt, pose.Next);
-                pawn.NextFrame = pose.Next;
-            }
-            pawn.Art.style.opacity = 1 - .70f * pose.Blend;
-            pawn.NextArt.style.display = pose.Next ? DisplayStyle.Flex : DisplayStyle.None;
-            pawn.NextArt.style.opacity = pose.Blend;
         }
 
         private void PaintStatus(Pawn pawn, BattleActorFrame actor)
@@ -301,7 +286,7 @@ namespace KingdomRhapsody
                 tint = new Color(.55f, .52f, .65f);
             else if ((state & BattleStatus.Awakened) != 0 && actor.Pose != BattlePose.Awaken)
                 tint = new Color(1, .56f, .62f);
-            pawn.Art.style.unityBackgroundImageTintColor = pawn.NextArt.style.unityBackgroundImageTintColor = tint;
+            pawn.Art.style.unityBackgroundImageTintColor = tint;
             double sinceHit = effectTick - actor.LastHitTick;
             pawn.Flash.style.opacity = actor.LastHitTick >= 0 && sinceHit >= 0 && sinceHit < 5
                 ? 1 - (float)(sinceHit / 5) : 0;
@@ -421,7 +406,8 @@ namespace KingdomRhapsody
                 Border(painter, hazard, Alpha(Gold, .94f), 2);
             }
 
-            foreach (BattleEffect fx in match.Effects)
+            IReadOnlyList<BattleEffect> activeEffects = match.Effects;
+            foreach (BattleEffect fx in activeEffects)
             {
                 if (effectTick < fx.Begin || effectTick >= fx.End)
                     continue;
@@ -448,16 +434,17 @@ namespace KingdomRhapsody
                         ImpactArea(painter, fx, target, color, progress);
                         break;
                     case EffectKind.Projectile:
-                        if (fx.TrackingKey != null && playback.Actors.TryGetValue(fx.TrackingKey, out BattleActorFrame actor))
-                            target = ToBoard(playback.Position(actor, out _));
+                        target = ToBoard(playback.ProjectileTarget(fx, activeEffects));
                         Vector2 forward = (target - origin).normalized;
                         origin += forward * 7 + new Vector2(0, -11);
-                        target.y -= 7;
+                        bool blast = fx.Skill is Skill.Cannon or Skill.Flame;
+                        if (!blast)
+                            target.y -= 7;
                         Color bright = EffectColor(fx);
                         Vector2 head = Vector2.Lerp(origin, target, progress);
                         Vector2 tail = Vector2.Lerp(origin, target, Mathf.Max(0, progress - .22f));
                         Line(painter, tail, head, Alpha(bright, .8f), 2.5f);
-                        Circle(painter, head, fx.Skill is Skill.Cannon or Skill.Flame ? 4.5f : 2.6f, bright, true);
+                        Circle(painter, head, blast ? 4.5f : 2.6f, bright, true);
                         break;
                     case EffectKind.Rift:
                         Line(painter, origin, target, Alpha(color, color.a * .46f), Battlefield.RiftHalfWidth * Tile * 2);

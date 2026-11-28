@@ -23,7 +23,8 @@
       "fps": 14,
       "loop": true,
       "cue": 0,
-      "sourceHash": "d4df1d2b578afbc4136abf9dd217ddd21a69288bba60e7cba5f8e61d8e5c15c5"
+      "sourceHash": "d4df1d2b578afbc4136abf9dd217ddd21a69288bba60e7cba5f8e61d8e5c15c5",
+      "inbetween": true
     },
     {
       "path": "character-sprites/crystal-armadillo/CrystalArmadillo_Ram.png",

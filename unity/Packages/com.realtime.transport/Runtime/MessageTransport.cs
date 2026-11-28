@@ -61,7 +61,7 @@ namespace Realtime.Transport
         public static bool SupportsWebTransport => RB_SupportsWebTransport() != 0;
         private int browserHandle;
         [DllImport("__Internal")] private static extern int RB_Create();
-        [DllImport("__Internal")] private static extern void RB_OpenBinary(int handle,string url,byte[] hello,int length,string runtimeURL);
+        [DllImport("__Internal")] private static extern void RB_OpenBinary(int handle,string url,byte[] hello,int length,string runtimeURL,int coalesceBattleSnapshots);
         [DllImport("__Internal")] private static extern int RB_TrySendBytes(int handle,byte[] data,int length);
         [DllImport("__Internal")] private static extern int RB_PollPacket(int handle,byte[] data,int capacity,out double receivedMS,out int error);
         private byte[] browserReadBuffer;
@@ -111,7 +111,7 @@ namespace Realtime.Transport
         }
 
         /// <summary>Opens a binary WebSocket attempt. Hello and all sends are copied before asynchronous use.</summary>
-        public void OpenBinary(int attempt,string url,byte[] hello)
+        public void OpenBinary(int attempt,string url,byte[] hello,bool coalesceBattleSnapshots=false)
         {
             if(attempt!=Epoch)return;
             ValidateBytes(hello);
@@ -124,7 +124,7 @@ namespace Realtime.Transport
             if(browserHandle==0)browserHandle=RB_Create();
             if(browserHandle==0)throw new IOException("Browser connection capacity exceeded");
             browserReadBuffer=new byte[MaxMessageBytes];
-            RB_OpenBinary(browserHandle,url,owned,owned.Length,BrowserRuntimeURL);
+            RB_OpenBinary(browserHandle,url,owned,owned.Length,BrowserRuntimeURL,coalesceBattleSnapshots?1:0);
             lock(inboxGate){if(attempt==Epoch)opened=true;}
 #else
             lifetime=new CancellationTokenSource();socket=new ClientWebSocket();

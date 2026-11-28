@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace KingdomRhapsody.Editor
 {
-    [ScriptedImporter(2, "battleactor")]
+    [ScriptedImporter(3, "battleactor")]
     public sealed class BattleActorImporter : ScriptedImporter
     {
         #pragma warning disable CS0649 // JsonUtility fills these import descriptors.
@@ -24,7 +24,7 @@ namespace KingdomRhapsody.Editor
         {
             public string path, pose;
             public int frames, fps, cue, edgeAlpha;
-            public bool loop;
+            public bool loop, inbetween;
             public Erasure[] erase;
         }
 
@@ -88,12 +88,21 @@ namespace KingdomRhapsody.Editor
             var hashes = new Dictionary<ulong, List<int>>();
             cells = new int[source.rows * clip.frames];
             for (int row = 0; row < source.rows; row++)
+            {
+                var frames = new Color32[clip.frames][];
                 for (int frame = 0; frame < clip.frames; frame++)
                 {
                     int x = frame * source.size;
                     int y = (source.rows - 1 - row) * source.size;
                     Erasure[] masks = Array.FindAll(clip.erase ?? Array.Empty<Erasure>(), mask => mask.Applies(row, frame));
-                    Color32[] sampled = Sample(pixels, raw.width, x, y, source.size, tile, Math.Clamp(clip.edgeAlpha, 0, 254), masks);
+                    frames[frame] = Sample(pixels, raw.width, x, y, source.size, tile, Math.Clamp(clip.edgeAlpha, 0, 254), masks);
+                }
+                if (clip.loop && clip.inbetween)
+                    FillLoop(frames, tile);
+
+                for (int frame = 0; frame < clip.frames; frame++)
+                {
+                    Color32[] sampled = frames[frame];
                     ulong hash = Hash(sampled);
                     if (!hashes.TryGetValue(hash, out List<int> candidates))
                     {
@@ -112,6 +121,7 @@ namespace KingdomRhapsody.Editor
                         tileIndex = candidates[found];
                     cells[row * clip.frames + frame] = tileIndex;
                 }
+            }
 
             columns = Math.Min(source.columns, unique.Count);
             int rows = (unique.Count + columns - 1) / columns;
@@ -132,6 +142,21 @@ namespace KingdomRhapsody.Editor
             result.SetPixels32(output);
             result.Apply(false, true);
             return result;
+        }
+
+        private static void FillLoop(Color32[][] frames, int tile)
+        {
+            var source = (Color32[][])frames.Clone();
+            for (int start = 0; start < source.Length; start++)
+            {
+                if (Equal(source[start], source[(start + source.Length - 1) % source.Length]))
+                    continue;
+                int count = 1;
+                while (count < source.Length && Equal(source[start], source[(start + count) % source.Length]))
+                    count++;
+                if (count > 1)
+                    LoopPoseInbetweens.Fill(frames, start, count, tile);
+            }
         }
 
         private static Color32[] Sample(Color32[] source, int width, int cx, int cy, int size, int tile, int floor, Erasure[] masks)

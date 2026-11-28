@@ -35,20 +35,6 @@ namespace KingdomRhapsody
             }
         }
 
-        private sealed class Aim
-        {
-            internal readonly int Slot;
-            internal readonly BattleCard Card;
-            internal bool HasOrigin, HasTarget;
-            internal WorldPoint Origin, Point, Direction;
-
-            internal Aim(int slot, BattleCard card)
-            {
-                Slot = slot;
-                Card = card;
-            }
-        }
-
         private readonly VisualElement root, viewport, stage, dialog, header, dock;
         private readonly Label timer, phase, energyValue, hint, countdown, hazard, title;
         private readonly Label[] princeHealth = new Label[2];
@@ -66,8 +52,8 @@ namespace KingdomRhapsody
         private BattleSession match;
         private BattleSceneFrame scene;
         private readonly bool online;
-        private Aim selected;
-        private readonly Dictionary<int, Aim> dragAims = new Dictionary<int, Aim>();
+        private BattleAim selected;
+        private readonly Dictionary<int, BattleAim> dragAims = new Dictionary<int, BattleAim>();
         private readonly List<BattleAimMarker> markers = new List<BattleAimMarker>(BattleMatch.HandSize);
         private int boardPointer = -1;
         private int messageEnd, layoutWidth, layoutHeight;
@@ -114,7 +100,7 @@ namespace KingdomRhapsody
             {
                 if (boardPointer < 0 && selected != null)
                 {
-                    selected.HasTarget = false;
+                    selected.Reset();
                     RefreshAim();
                 }
             });
@@ -215,7 +201,7 @@ namespace KingdomRhapsody
 
         private bool SlotDragged(int slot)
         {
-            foreach (Aim aim in dragAims.Values)
+            foreach (BattleAim aim in dragAims.Values)
                 if (aim.Slot == slot)
                     return true;
             return false;
@@ -249,7 +235,7 @@ namespace KingdomRhapsody
                 selected = null;
             else
             {
-                selected = new Aim(slot, match.Hand(slot));
+                selected = new BattleAim(slot, match.Hand(slot));
                 messageEnd = 0;
                 playCue("tap");
             }
@@ -263,23 +249,23 @@ namespace KingdomRhapsody
                 return;
             if (selected?.Slot == slot)
                 selected = null;
-            dragAims.Add(pointer, new Aim(slot, match.Hand(slot)));
+            dragAims.Add(pointer, new BattleAim(slot, match.Hand(slot)));
             messageEnd = 0;
             RefreshAim();
         }
 
         private void Drag(int pointer, Vector2 at)
         {
-            if (dragAims.TryGetValue(pointer, out Aim aim))
+            if (dragAims.TryGetValue(pointer, out BattleAim aim))
             {
-                AimAt(aim, board.World(at), true);
+                aim.Update(board.World(at), match.Forward, true);
                 RefreshAim();
             }
         }
 
         private void EndDrag(int pointer, Vector2 at)
         {
-            if (!dragAims.TryGetValue(pointer, out Aim aim))
+            if (!dragAims.TryGetValue(pointer, out BattleAim aim))
                 return;
             dragAims.Remove(pointer);
             Commit(aim, board.World(at));
@@ -298,8 +284,8 @@ namespace KingdomRhapsody
                 return;
 
             boardPointer = evt.pointerId;
-            selected.HasOrigin = false;
-            AimAt(selected, board.World(evt.position), true);
+            selected.Reset();
+            selected.Update(board.World(evt.position), match.Forward, true);
             board.CapturePointer(boardPointer);
             RefreshAim();
             evt.StopImmediatePropagation();
@@ -309,7 +295,7 @@ namespace KingdomRhapsody
         {
             if (selected == null || boardPointer >= 0 && boardPointer != evt.pointerId)
                 return;
-            AimAt(selected, board.World(evt.position), boardPointer >= 0);
+            selected.Update(board.World(evt.position), match.Forward, boardPointer >= 0);
             RefreshAim();
         }
 
@@ -320,10 +306,7 @@ namespace KingdomRhapsody
             int released = boardPointer;
             boardPointer = -1;
             board.ReleasePointer(released);
-            Aim aim = selected;
-            Commit(aim, board.World(evt.position));
-            if (selected == aim)
-                selected.HasOrigin = false;
+            Commit(selected, board.World(evt.position));
             evt.StopImmediatePropagation();
         }
 
@@ -334,43 +317,16 @@ namespace KingdomRhapsody
             boardPointer = -1;
             if (selected != null)
             {
-                selected.HasOrigin = selected.HasTarget = false;
+                selected.Reset();
                 RefreshAim();
             }
         }
 
-        private void AimAt(Aim aim, WorldPoint location, bool anchorRift)
-        {
-            bool inBoard = Battlefield.Contains(location);
-            if (aim.Card.Skill == Skill.Rift && anchorRift)
-            {
-                if (!aim.HasOrigin && inBoard)
-                {
-                    aim.Origin = location;
-                    aim.HasOrigin = true;
-                }
-                if (aim.HasOrigin)
-                {
-                    WorldPoint heading = location - aim.Origin;
-                    aim.HasTarget = true;
-                    aim.Point = aim.Origin;
-                    aim.Direction = heading.LengthSquared() >= .04f ? WorldPoint.Normalize(heading) : match.Forward;
-                    return;
-                }
-            }
-            aim.HasTarget = inBoard;
-            if (inBoard)
-            {
-                aim.Point = aim.Card.IsSpell ? location : Battlefield.Cell(Battlefield.Column(location), Battlefield.Row(location));
-                aim.Direction = match.Forward;
-            }
-        }
-
-        private void Commit(Aim aim, WorldPoint location)
+        private void Commit(BattleAim aim, WorldPoint location)
         {
             if (aim == null)
                 return;
-            AimAt(aim, location, true);
+            aim.Update(location, match.Forward, true);
             PlayResult result = aim.HasTarget ? match.Play(aim.Slot, aim.Card, aim.Point, aim.Direction) : PlayResult.Bounds;
             if (result == PlayResult.Accepted || result == PlayResult.Pending)
             {
@@ -378,7 +334,7 @@ namespace KingdomRhapsody
                     selected = null;
             }
             else if (selected == aim)
-                aim.HasTarget = false;
+                aim.Reset();
             ReportResult(aim.Slot, result);
             RefreshAim();
         }
@@ -410,12 +366,12 @@ namespace KingdomRhapsody
         {
             markers.Clear();
             bool showGrid = CollectMarker(selected);
-            foreach (Aim aim in dragAims.Values)
+            foreach (BattleAim aim in dragAims.Values)
                 showGrid |= CollectMarker(aim);
             board.MarkAims(markers, showGrid);
         }
 
-        private bool CollectMarker(Aim aim)
+        private bool CollectMarker(BattleAim aim)
         {
             if (aim == null)
                 return false;

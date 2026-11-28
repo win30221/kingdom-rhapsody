@@ -716,7 +716,8 @@
           "loop": true,
           "origin": "redrawn",
           "minDistinctPoses": 4,
-          "edgeAlpha": 124
+          "edgeAlpha": 124,
+          "inbetween": true
         },
         {
           "id": "lash",
@@ -820,7 +821,8 @@
           "fps": 14,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "inbetween": true
         },
         {
           "id": "ram",
@@ -903,7 +905,8 @@
           "fps": 16,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "inbetween": true
         },
         {
           "id": "spit",
@@ -950,7 +953,8 @@
           "fps": 24,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "inbetween": true
         },
         {
           "id": "bite",
@@ -1015,7 +1019,8 @@
           "fps": 15,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "inbetween": true
         },
         {
           "id": "ram",
@@ -1062,7 +1067,8 @@
           "fps": 16,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "inbetween": true
         },
         {
           "id": "claw",

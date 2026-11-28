@@ -21,7 +21,7 @@ func main() {
 	dotnet := flag.String("dotnet", "dotnet", ".NET executable")
 	worker := flag.String("worker", "battle-worker/bin/Release/net8.0/BattleWorker.dll", "battle worker")
 	actors := flag.String("actors", "../unity/Assets/Battle/Resources/Battle/Actors", "battle animation timing metadata")
-	browser := flag.String("browser", "../unity/Packages/com.realtime.transport/Browser/transport.js", "GameNetKit browser transport")
+	browser := flag.String("browser", "../unity/Assets/StreamingAssets/KingdomRhapsody/transport.js", "GameNetKit browser transport for the legacy /transport.js route")
 	web := flag.String("web", "", "optional directory containing a Unity Web build")
 	origins := flag.String("origins", "", "comma-separated HTTPS origin URLs for a separately hosted web build")
 	capacity := flag.Int("rooms", 12, "maximum concurrent matches")

@@ -10,21 +10,9 @@ namespace KingdomRhapsody
 {
     internal sealed class OnlineBattleSession : BattleSession, IDisposable
     {
-        private readonly struct Pending
-        {
-            internal readonly int Slot, Cost;
-
-            internal Pending(int slot, int cost)
-            {
-                Slot = slot;
-                Cost = cost;
-            }
-        }
-
-        private const int PendingLimit = 5;
         private readonly MessageTransport transport = new MessageTransport();
         private readonly Queue<byte[]> outgoing = new Queue<byte[]>();
-        private readonly Dictionary<int, Pending> pending = new Dictionary<int, Pending>();
+        private readonly PendingBattleCommands pending = new PendingBattleCommands();
         private readonly List<BattleEffect> effects = new List<BattleEffect>();
         private WireBattleState state;
         private BattleSceneFrame scene;
@@ -44,37 +32,25 @@ namespace KingdomRhapsody
         internal override int Territory => state?.territory ?? 0;
         internal override int SprintTicksLeft => state?.cooldown ?? 0;
         internal override IReadOnlyList<BattleEffect> Effects => effects;
-        internal override bool CanSprint => state != null && state.canSprint && !PendingSlot(-1) &&
+        internal override bool CanSprint => state != null && state.canSprint && !pending.Full && !pending.HasSlot(-1) &&
             Energy + 1e-8 >= BattleMatch.SprintCost;
         internal override BattleCard NextCard => BattleCatalog.Find(state?.nextCard);
         internal override BattleCard Hand(int slot) => state != null ? BattleCatalog.Find(state.hand[slot]) : null;
 
-        internal override double Energy
-        {
-            get
-            {
-                double value = state?.energy ?? 0;
-                foreach (Pending entry in pending.Values)
-                    value -= entry.Cost;
-                return Math.Max(0, value);
-            }
-        }
+        internal override double Energy => pending.Energy(state?.energy ?? 0);
 
         internal void Connect(string address, BattleLoadout loadout)
         {
             if (!TryEndpoint(address, out Uri endpoint))
                 throw new ArgumentException("Unsupported game server address.", nameof(address));
-            var browser = new UriBuilder(endpoint)
-            {
-                Scheme = endpoint.Scheme == "wss" ? "https" : "http",
-                Path = "/transport.js"
-            };
-            transport.BrowserRuntimeURL = browser.Uri.AbsoluteUri;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            transport.BrowserRuntimeURL = Application.streamingAssetsPath.TrimEnd('/') + "/KingdomRhapsody/transport.js";
+#endif
             int attempt = transport.BeginAttempt();
             transport.OpenBinary(attempt, endpoint.AbsoluteUri, Encode(new BattlePacket
             {
                 type = "queue", version = BattlePacket.Version, loadout = WireLoadout.From(loadout)
-            }));
+            }), coalesceBattleSnapshots: true);
         }
 
         internal static bool TryEndpoint(string address, out Uri endpoint)
@@ -156,7 +132,7 @@ namespace KingdomRhapsody
             switch (packet.type)
             {
                 case "state":
-                    if (packet.seat == seat && packet.state != null && packet.state.tick > Tick)
+                    if (packet.seat == seat && packet.state?.Follows(state) == true)
                         UpdateScene(packet, received, false);
                     break;
                 case "effects":
@@ -165,11 +141,9 @@ namespace KingdomRhapsody
                             effects.Add(effect.Read());
                     break;
                 case "ack":
-                    if (packet.seat == seat && pending.TryGetValue(packet.seq, out Pending input))
-                    {
-                        pending.Remove(packet.seq);
-                        CommandResult?.Invoke(input.Slot, (PlayResult)packet.result);
-                    }
+                    var result = (PlayResult)packet.result;
+                    if (packet.seat == seat && pending.Acknowledge(packet.seq, result, out int slot))
+                        CommandResult?.Invoke(slot, result);
                     break;
             }
         }
@@ -180,6 +154,7 @@ namespace KingdomRhapsody
             if (next == null || next.hand == null || next.hand.Length != BattleMatch.HandSize ||
                 next.actors == null || next.actors.Length > 2 * BattleMatch.MaxUnitsPerSide ||
                 next.tick < 0 || next.winner < BattleMatch.Playing || next.winner > 1 ||
+                next.processedSeq < pending.ProcessedSequence || next.processedSeq > sequence ||
                 BattleCatalog.Find(next.nextCard) == null)
                 throw new FormatException("Invalid battle state.");
             foreach (string id in next.hand)
@@ -188,6 +163,7 @@ namespace KingdomRhapsody
 
             state = next;
             scene = new BattleSceneFrame(next);
+            pending.Advance(next.processedSeq);
             effects.RemoveAll(effect => effect.End + 120 < Tick);
             Snapshot?.Invoke(scene, received, initial);
         }
@@ -199,21 +175,13 @@ namespace KingdomRhapsody
                 Status?.Invoke(code ?? "connection_closed");
         }
 
-        private bool PendingSlot(int slot)
-        {
-            foreach (Pending entry in pending.Values)
-                if (entry.Slot == slot)
-                    return true;
-            return false;
-        }
-
         internal override PlayResult Validate(int slot, BattleCard card, Vector2 point)
         {
             if (disposed || !Live)
                 return PlayResult.Inactive;
             if (slot < 0 || slot >= BattleMatch.HandSize || card == null || Hand(slot) != card)
                 return PlayResult.CardChanged;
-            if (PendingSlot(slot) || pending.Count >= PendingLimit)
+            if (pending.HasSlot(slot) || pending.Full)
                 return PlayResult.Pending;
             if (Energy + 1e-8 < card.Cost)
                 return PlayResult.Energy;
@@ -254,7 +222,7 @@ namespace KingdomRhapsody
 
         internal override bool Sprint()
         {
-            if (disposed || !Live || !CanSprint || pending.Count >= PendingLimit)
+            if (disposed || !Live || !CanSprint)
                 return false;
             Queue(new BattlePacket { type = "sprint" }, -1, BattleMatch.SprintCost);
             return true;
@@ -264,7 +232,7 @@ namespace KingdomRhapsody
         {
             packet.match = matchId;
             packet.seq = ++sequence;
-            pending.Add(packet.seq, new Pending(slot, cost));
+            pending.Add(packet.seq, slot, cost);
             outgoing.Enqueue(Encode(packet));
         }
 

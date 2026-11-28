@@ -100,7 +100,7 @@ internal static class Program
         var clock = Stopwatch.StartNew();
         double next = 1d / BattleMatch.TickRate;
         int lastEffect = 0;
-        Publish("start", id, match);
+        Publish("start", id, match, newestSequence);
         while (match.Winner == BattleMatch.Playing && !incoming.IsCompleted)
         {
             // A stalled process can catch up several ticks while keeping the play loop bounded.
@@ -132,7 +132,7 @@ internal static class Program
             SendEffects(match, id, ref lastEffect);
             if (replies.Count > 0 || match.PresentationChanged || match.Winner != BattleMatch.Playing ||
                 match.Tick % (BattleMatch.TickRate / BattleMatch.SnapshotRate) == 0)
-                Publish("state", id, match);
+                Publish("state", id, match, newestSequence);
             foreach (BattlePacket reply in replies)
                 Write(reply);
         }
@@ -154,14 +154,15 @@ internal static class Program
         };
     }
 
-    private static void Publish(string type, string id, BattleMatch match)
+    private static void Publish(string type, string id, BattleMatch match, int[] processedSequences)
     {
         var scene = new BattleSceneFrame(match);
         for (int seat = 0; seat < 2; seat++)
             Write(new BattlePacket
             {
                 type = type, version = BattlePacket.Version, match = id, to = seat, seat = seat,
-                state = WireBattleState.From(match, seat, scene)
+                replaceable = type == "state" && match.Winner == BattleMatch.Playing,
+                state = WireBattleState.From(match, seat, scene, processedSequences[seat])
             });
     }
 

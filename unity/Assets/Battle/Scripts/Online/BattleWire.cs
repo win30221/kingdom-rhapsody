@@ -9,9 +9,10 @@ namespace KingdomRhapsody
     [Serializable]
     internal sealed class BattlePacket
     {
-        internal const int Version = 1;
+        internal const int Version = 2;
         public string type, match, code, card;
         public int version, to, seat, seq, slot, result;
+        public bool replaceable;
         public float x, y, dx, dy;
         public WireLoadout loadout, first, second;
         public WireBattleState state;
@@ -49,7 +50,7 @@ namespace KingdomRhapsody
     [Serializable]
     internal sealed class WireBattleState
     {
-        public int tick, winner, territory, cooldown;
+        public int tick, winner, territory, cooldown, processedSeq;
         public float healthA, healthB;
         public double energy;
         public bool canSprint, warning;
@@ -57,14 +58,18 @@ namespace KingdomRhapsody
         public string nextCard;
         public WireBattleActor[] actors;
 
-        internal static WireBattleState From(BattleMatch match, int seat, BattleSceneFrame scene)
+        // A disconnect can end the match without advancing the simulation tick.
+        internal bool Follows(WireBattleState previous) => previous.winner == BattleMatch.Playing &&
+            (tick > previous.tick || tick == previous.tick && winner != BattleMatch.Playing);
+
+        internal static WireBattleState From(BattleMatch match, int seat, BattleSceneFrame scene, int processedSequence)
         {
             var hand = new string[BattleMatch.HandSize];
             for (int i = 0; i < hand.Length; i++)
                 hand[i] = match.Hand(seat, i).Id;
             return new WireBattleState
             {
-                tick = scene.Tick, winner = match.Winner, territory = scene.Territory,
+                tick = scene.Tick, winner = match.Winner, territory = scene.Territory, processedSeq = processedSequence,
                 cooldown = match.SprintTicksLeft(seat), healthA = scene.HealthA, healthB = scene.HealthB,
                 energy = match.Energy(seat), canSprint = match.CanSprint(seat), warning = scene.HazardWarning,
                 hand = hand, nextCard = match.NextCard(seat).Id, actors = Array.ConvertAll(scene.Actors, WireBattleActor.From)

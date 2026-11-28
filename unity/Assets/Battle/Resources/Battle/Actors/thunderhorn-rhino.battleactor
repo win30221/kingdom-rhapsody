@@ -23,7 +23,8 @@
       "fps": 15,
       "loop": true,
       "cue": 0,
-      "sourceHash": "9b166ea0a3f8a9dfd68c564f47ef0d5d451331e2eab79556cfee79aa9a310e30"
+      "sourceHash": "9b166ea0a3f8a9dfd68c564f47ef0d5d451331e2eab79556cfee79aa9a310e30",
+      "inbetween": true
     },
     {
       "path": "character-sprites/thunderhorn-rhino/ThunderhornRhino_Ram.png",

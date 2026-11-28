@@ -388,7 +388,7 @@ namespace KingdomRhapsody
             ResolveImpacts();
             foreach (BattleUnit unit in units)
                 if (!unit.Alive)
-                    AddEffect(EffectKind.Death, unit.Position, unit.Position, DeathAnimationTicks, 0, Skill.Strike);
+                    AddEffect(EffectKind.Death, unit.Position, unit.Position, DeathAnimationTicks, 0, Skill.Strike, unit.Key);
             units.RemoveAll(unit => !unit.Alive);
             CheckEnd();
             if (Live && practiceOpponent)

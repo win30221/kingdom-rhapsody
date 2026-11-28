@@ -19,9 +19,11 @@ internal static class Program
         Run("same-tick contact and royal knockout are simultaneous", SameTick);
         Run("both teams take central hazard damage at 8 s", Hazard);
         Run("three spell shapes, timing and prince damage", Spells);
+        Run("rift release outside the battlefield cancels drag and board aim", RiftAim);
         Run("all cards can be played from a legal hand", EveryCard);
         Run("melee damage is applied on the contact tick", AttackTiming);
         Run("projectile launches first then damage and presentation agree", Projectile);
+        Run("a projectile follows the defeated target to the blast center", ProjectileTargetDeath);
         Run("healer escort, rally range and axe miss", SupportAndCone);
         Run("flower critical, pangolin damage and rhino stun", BeastAttacks);
         Run("poison pierces a shield and armadillo shield returns", BeastStatuses);
@@ -30,6 +32,8 @@ internal static class Program
         Run("footman and shieldman catch a patrolling prince", ChasePrince);
         Run("GameNetKit presents movement and removes defeated units", Presentation);
         Run("paired seats own independent decks, guards and commands", PairedSeats);
+        Run("a forfeit can be received on the latest simulation tick", SameTickForfeit);
+        Run("pending command energy reconciles in either delivery order", PendingEnergy);
         Run("complete a match against the practice opponent", CompleteMatch);
     }
 
@@ -449,6 +453,30 @@ internal static class Program
         Check(both.Winner == BattleMatch.Draw && both.Prince(0).Health == 0 && both.Prince(1).Health == 0);
     }
 
+    private static void RiftAim()
+    {
+        var match = Create("earth-rift");
+        var aim = new BattleAim(0, match.Hand(0, 0));
+        var origin = new Vector2(0, -6);
+        var release = new Vector2(2, -3);
+        aim.Update(origin, Vector2.UnitY, true);
+        Check(aim.HasTarget && aim.Point == origin);
+        aim.Update(new Vector2(0, -20), Vector2.UnitY, true);
+        Check(!aim.HasTarget && match.Hand(0, 0) == aim.Card && Near(match.Energy(0), 5));
+
+        aim.Update(release, Vector2.UnitY, true);
+        Check(aim.HasTarget && aim.Point == origin && aim.Direction == Vector2.Normalize(release - origin));
+        aim.Reset();
+        Check(!aim.HasTarget);
+        aim.Update(release, Vector2.UnitY, false);
+        aim.Update(new Vector2(0, -20), Vector2.UnitY, true);
+        Check(!aim.HasTarget);
+        aim.Update(release, Vector2.UnitY, true);
+        Check(aim.Point == release && aim.Direction == Vector2.UnitY);
+        Check(match.Play(0, aim.Slot, aim.Card, aim.Point, aim.Direction) == PlayResult.Accepted);
+        Check(Near(match.Energy(0), 5 - aim.Card.Cost));
+    }
+
     private static void Projectile()
     {
         var match = Both("bow-recruit", "footman");
@@ -478,6 +506,46 @@ internal static class Program
         Check(match.Effects.Any(effect => effect.Kind == EffectKind.Point && effect.Begin == match.Tick));
         presentation.Advance((match.Tick + 2) / 30d);
         Check(Near(presentation.Actors[target.Key].Health, .9) && presentation.Visible.Tick == match.Tick);
+    }
+
+    private static void ProjectileTargetDeath()
+    {
+        foreach (string card in new[] { "cannoneer", "flame-mage" })
+        {
+            var match = Both(card, "light-cavalry");
+            BattleUnit shooter = Deploy(match, 0, 0, 8, 21);
+            BattleUnit target = Deploy(match, 1, 0, 8, 9);
+            shooter.Position = new Vector2(0, -6);
+            target.Position = new Vector2(0, -2);
+            target.StunEnd = match.Tick + 120;
+            match.Step();
+            StepTo(match, shooter.ActionContact);
+            BattleEffect shot = match.Effects.Single(effect => effect.Kind == EffectKind.Projectile && effect.Skill == shooter.Card.Skill);
+            Check(shot.TrackingKey == target.Key);
+
+            var presentation = new BattlePresentation();
+            presentation.Reset(match, match.Tick / 30d);
+            target.Position += new Vector2(.2f, .3f);
+            match.Step();
+            presentation.Publish(match, match.Tick / 30d);
+            presentation.Advance((match.Tick + 2) / 30d);
+            Check(presentation.ProjectileTarget(shot, match.Effects) == target.Position);
+
+            target.Position += new Vector2(.2f, .3f);
+            target.Health = 0;
+            match.Step();
+            BattleEffect removed = match.Effects.Single(effect => effect.Kind == EffectKind.Death && effect.TrackingKey == target.Key);
+            BattleEffect deathOnClient = WireBattleEffect.From(removed).Read();
+            presentation.Publish(match, match.Tick / 30d);
+            presentation.Advance((match.Tick + 2) / 30d);
+            Check(!presentation.Actors.ContainsKey(target.Key));
+            Vector2 endpoint = presentation.ProjectileTarget(shot, new[] { deathOnClient });
+            Check(endpoint == target.Position && endpoint != shot.Target);
+
+            StepTo(match, shot.End);
+            BattleEffect blast = match.Effects.Single(effect => effect.Kind == EffectKind.Area && effect.Skill == shot.Skill);
+            Check(blast.Begin == shot.End && blast.Target == endpoint);
+        }
     }
 
     private static void SupportAndCone()
@@ -543,14 +611,47 @@ internal static class Program
         Check(match.Hand(0, 0).Id == "footman" && match.Hand(1, 0).Id == "meteorfall");
         Check(Guard(match, 1, 1).Card == BattleCatalog.Crossbowman && Guard(match, 1, 0).Card == BattleCatalog.Spearman);
         var frame = new BattleSceneFrame(match);
-        WireBattleState first = WireBattleState.From(match, 0, frame), second = WireBattleState.From(match, 1, frame);
+        WireBattleState first = WireBattleState.From(match, 0, frame, 7), second = WireBattleState.From(match, 1, frame, 11);
         Check(first.hand[0] == "footman" && second.hand[0] == "meteorfall");
+        Check(first.processedSeq == 7 && second.processedSeq == 11);
         Check(first.actors.Select(actor => actor.id).SequenceEqual(second.actors.Select(actor => actor.id)));
 
         StepTo(match, BattleMatch.OpeningTicks + 90);
         Check(match.Units.Count == 6);
         match.Forfeit(1);
         Check(match.Winner == 0);
+    }
+
+    private static void SameTickForfeit()
+    {
+        var playing = new WireBattleState { tick = 72, winner = BattleMatch.Playing };
+        var final = new WireBattleState { tick = 72, winner = 1 };
+        Check(!playing.Follows(playing) && final.Follows(playing) && !playing.Follows(final));
+        final.tick--;
+        Check(!final.Follows(playing));
+    }
+
+    private static void PendingEnergy()
+    {
+        var pending = new PendingBattleCommands();
+        pending.Add(1, 0, 2);
+        Check(Near(pending.Energy(5), 3) && pending.HasSlot(0));
+        pending.Advance(1);
+        Check(Near(pending.Energy(3), 3) && !pending.HasSlot(0));
+        pending.Add(2, 1, 2);
+        Check(pending.Acknowledge(1, PlayResult.Accepted, out int first) && first == 0);
+        Check(pending.Acknowledge(2, PlayResult.Accepted, out int second) && second == 1);
+        Check(Near(pending.Energy(3), 1) && pending.HasSlot(1));
+        pending.Advance(2);
+        Check(Near(pending.Energy(1), 1) && !pending.HasSlot(1));
+        Check(!pending.Acknowledge(2, PlayResult.Accepted, out _));
+
+        pending.Add(3, -1, 2);
+        Check(Near(pending.Energy(4), 2) && pending.HasSlot(-1));
+        Check(pending.Acknowledge(3, PlayResult.Territory, out int rejected) && rejected == -1);
+        Check(Near(pending.Energy(4), 4) && !pending.HasSlot(-1));
+        pending.Advance(3);
+        Check(Near(pending.Energy(4), 4));
     }
 
     private static void CompleteMatch()
