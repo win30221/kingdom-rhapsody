@@ -36,6 +36,7 @@ internal static class Program
         Run("melee pursuit closes the gap before winding up and resumes its walk", MeleePursuit);
         Run("a prince who sprints after windup can dodge the hit", SprintDodgesMelee);
         Run("GameNetKit presents movement and removes defeated units", Presentation);
+        Run("short walks advance between snapshots while attacks and pushes retain their pose", StridePresentation);
         Run("paired seats own independent decks, guards and commands", PairedSeats);
         Run("a forfeit can be received on the latest simulation tick", SameTickForfeit);
         Run("pending command energy reconciles in either delivery order", PendingEnergy);
@@ -520,6 +521,56 @@ internal static class Program
         Check(!presentation.Actors.ContainsKey(pawn.Key) && !presentation.EndAnimationComplete);
         presentation.Advance(finalTime + 1);
         Check(presentation.EndAnimationComplete);
+    }
+
+    private static void StridePresentation()
+    {
+        const double tickSeconds = 1d / BattleMatch.TickRate;
+        foreach (bool shortStride in new[] { false, true })
+        {
+            var match = Create("footman");
+            BattleUnit unit = Deploy(match, 0, 0, 8, 24);
+            Vector2 start = unit.Position;
+            var presentation = new BattlePresentation();
+            presentation.Reset(match, 0);
+            match.Step();
+            if (shortStride)
+                unit.StunEnd = match.Tick + 2;
+            match.Step();
+            Check(unit.Pose == (shortStride ? BattlePose.Idle : BattlePose.Walk));
+            presentation.Publish(match, 2 * tickSeconds);
+
+            presentation.Advance(2.5 * tickSeconds);
+            BattleActorSample first = presentation.Sample(presentation.Actors[unit.Key]);
+            Check(first.Position.Y > start.Y && first.Pose == BattlePose.Walk && first.Elapsed > 0 && first.Heading.Y > 0);
+            presentation.Advance(3.5 * tickSeconds);
+            BattleActorSample second = presentation.Sample(presentation.Actors[unit.Key]);
+            Check(second.Pose == BattlePose.Walk && second.Position.Y > first.Position.Y && second.Elapsed > first.Elapsed);
+        }
+
+        var pushed = Create("footman");
+        BattleUnit pawn = Deploy(pushed, 0, 0, 8, 24);
+        var pushView = new BattlePresentation();
+        pushView.Reset(pushed, 0);
+        pawn.StunEnd = pushed.Tick + 5;
+        StepTo(pushed, pushed.Tick + 2);
+        pawn.StunEnd = 0;
+        pawn.Position += Vector2.UnitX * .2f;
+        pushView.Publish(pushed, 2 * tickSeconds);
+        pushView.Advance(3 * tickSeconds);
+        BattleActorSample push = pushView.Sample(pushView.Actors[pawn.Key]);
+        Check(push.Pose == BattlePose.Idle && push.Position.X < pawn.Position.X && pawn.WalkPhase == 0);
+
+        var recovering = Create("footman");
+        BattleUnit fighter = Deploy(recovering, 0, 0, 8, 24);
+        fighter.SetPose(BattlePose.Action, recovering.Tick, 1);
+        fighter.ActionEnd = recovering.Tick + 1;
+        var attackView = new BattlePresentation();
+        attackView.Reset(recovering, 0);
+        StepTo(recovering, recovering.Tick + 2);
+        attackView.Publish(recovering, 2 * tickSeconds);
+        attackView.Advance(2.5 * tickSeconds);
+        Check(attackView.Sample(attackView.Actors[fighter.Key]).Pose == BattlePose.Action);
     }
 
     private static BattleLoadout Loadout(string card, RoyalGuard left = RoyalGuard.Spearman, RoyalGuard right = RoyalGuard.Crossbowman)

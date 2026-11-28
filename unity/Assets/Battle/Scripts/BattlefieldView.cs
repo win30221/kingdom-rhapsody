@@ -25,6 +25,9 @@ namespace KingdomRhapsody
     {
         internal const float Tile = 27.5f;
         internal const float Width = Battlefield.Columns * Tile, Height = Battlefield.Rows * Tile;
+        internal const float MapHorizontalScale = Battlefield.ArtScaleY / Battlefield.ArtScaleX;
+        private const float ActorVisualScale = 1.18f;
+        private static readonly Scale ActorAspect = new Scale(new Vector2(1 / MapHorizontalScale, 1));
         private static readonly Rect HazardArea = new Rect(
             Width / 2 - Battlefield.HazardHalfWidth * Tile, Height / 2 - Battlefield.HazardHalfHeight * Tile,
             2 * Battlefield.HazardHalfWidth * Tile, 2 * Battlefield.HazardHalfHeight * Tile);
@@ -49,7 +52,9 @@ namespace KingdomRhapsody
                 Model = model;
                 Root = new VisualElement { pickingMode = PickingMode.Ignore, usageHints = UsageHints.DynamicTransform, userData = this };
                 Root.style.position = Position.Absolute;
-                float size = (model ? model.worldSize : 2f) * Tile;
+                Root.style.transformOrigin = new TransformOrigin(0, 0);
+                Root.style.scale = ActorAspect;
+                float size = (model ? model.worldSize : 2f) * Tile * ActorVisualScale;
                 var mark = BattleView.Box(actor.IsPrince || actor.IsGuard ? -17 : -11, -5,
                     actor.IsPrince || actor.IsGuard ? 34 : 22, 10);
                 mark.style.backgroundColor = Alpha(actor.Seat == ownSeat ? Friendly : Enemy, .55f);
@@ -125,6 +130,7 @@ namespace KingdomRhapsody
             {
                 var ghost = BattleView.Box(0, 0, 0, 0);
                 ghost.style.display = DisplayStyle.None;
+                ghost.style.scale = ActorAspect;
                 aimLayer.Add(ghost);
                 ghosts.Add(ghost);
             }
@@ -177,7 +183,7 @@ namespace KingdomRhapsody
                     continue;
                 VisualElement ghost = ghosts[drawn++];
                 Vector2 at = ToBoard(marker.Point);
-                float size = model.worldSize * Tile;
+                float size = model.worldSize * Tile * ActorVisualScale;
                 ghost.style.display = DisplayStyle.Flex;
                 ghost.style.left = at.x - size * model.pivot.x;
                 ghost.style.top = at.y - size * (1 - model.pivot.y);
@@ -188,6 +194,8 @@ namespace KingdomRhapsody
                 if (!ReferenceEquals(ghost.userData, frame))
                 {
                     ghost.userData = frame;
+                    ghost.style.transformOrigin = new TransformOrigin(Length.Percent(model.pivot.x * 100),
+                        Length.Percent((1 - model.pivot.y) * 100));
                     BattleView.Image(ghost, frame);
                 }
             }
@@ -245,8 +253,8 @@ namespace KingdomRhapsody
                     actors.Add(pawn.Root);
                 }
 
-                WorldPoint position = presentation.Position(pair.Value, out BattleActorFrame pose, out double walkPhase);
-                Vector2 onBoard = ToBoard(position);
+                BattleActorSample sample = presentation.Sample(pair.Value);
+                Vector2 onBoard = ToBoard(sample.Position);
                 pawn.Root.style.translate = new Translate(onBoard.x, onBoard.y, 0);
                 pawn.Depth = Mathf.RoundToInt(onBoard.y * 16);
                 pawn.Health.style.width = Length.Percent(pair.Value.Health * 100);
@@ -255,14 +263,13 @@ namespace KingdomRhapsody
                 if (!pawn.Model)
                     continue;
 
-                WorldPoint heading = Perspective(pose.Heading);
+                WorldPoint heading = Perspective(sample.Heading);
                 float angle = Mathf.Atan2(heading.X, heading.Y) * Mathf.Rad2Deg;
                 int direction = (Mathf.RoundToInt(angle / 45f) + 8) % 8;
-                if (pawn.Facing < 0 || pose.Pose != BattlePose.Walk ||
+                if (pawn.Facing < 0 || sample.Pose != BattlePose.Walk ||
                     Mathf.Abs(Mathf.DeltaAngle(pawn.Facing * 45, angle)) > 26)
                     pawn.Facing = direction;
-                double elapsed = pose.Pose == BattlePose.Walk ? walkPhase : effectTick - pose.PoseTick;
-                Sprite frame = art.Frame(pawn.Model, pose.Pose, pawn.Facing, elapsed, pose.PoseLength);
+                Sprite frame = art.Frame(pawn.Model, sample.Pose, pawn.Facing, sample.Elapsed, sample.PoseLength);
                 if (frame != pawn.Frame)
                 {
                     BattleView.Image(pawn.Art, frame);

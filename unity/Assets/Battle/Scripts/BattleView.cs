@@ -9,8 +9,11 @@ namespace KingdomRhapsody
 {
     internal sealed class BattleView
     {
-        private const float Width = 540, Height = 1070, Left = (Width - BattlefieldView.Width) / 2;
+        private const float Width = 540, Left = (Width - BattlefieldView.Width) / 2;
         private const float BoardTop = 56, DockTop = BoardTop + BattlefieldView.Height + 7;
+        private const float HandTop = 44, HandWidth = 94, HandHeight = 124, NextWidth = 72, NextHeight = 95;
+        private const float DockInset = 8, DockHeight = HandTop + HandHeight + DockInset;
+        private const float BottomInset = 12, Height = DockTop + DockHeight + BottomInset;
         private static readonly Color Gold = new Color32(255, 221, 158, 255);
         private static readonly Color Ivory = new Color32(255, 248, 224, 255);
         private static readonly Color Cyan = new Color32(133, 225, 244, 255);
@@ -80,7 +83,7 @@ namespace KingdomRhapsody
             root.RegisterCallback<GeometryChangedEvent>(_ => Layout(true));
             var mapLayer = Box(Left, BoardTop, BattlefieldView.Width, BattlefieldView.Height);
             // Apply the inverse grid-to-art aspect adjustment to the art, input, and effects together.
-            mapLayer.style.scale = new Scale(new Vector2(Battlefield.ArtScaleY / Battlefield.ArtScaleX, 1));
+            mapLayer.style.scale = new Scale(new Vector2(BattlefieldView.MapHorizontalScale, 1));
             stage.Add(mapLayer);
             AddMapArt(mapLayer);
             board = new BattlefieldView(art, Get("frames/ground-shadow"));
@@ -117,12 +120,12 @@ namespace KingdomRhapsody
             hazard.style.backgroundColor = Gold;
             Round(hazard, 12);
 
-            dock = Box(Left, DockTop, BattlefieldView.Width, 121);
+            dock = Box(Left, DockTop, BattlefieldView.Width, DockHeight);
             dock.style.backgroundColor = Ink;
             Round(dock, 6);
             stage.Add(dock);
-            energyValue = Text(dock, "", 0, 0, 130, 24, 16, Cyan, TextAnchor.MiddleLeft);
-            var energyTrack = Box(0, 25, 130, 5);
+            energyValue = Text(dock, "", DockInset, 3, 130, 24, 16, Cyan, TextAnchor.MiddleLeft);
+            var energyTrack = Box(DockInset, 30, 130, 5);
             energyTrack.style.backgroundColor = Panel;
             Round(energyTrack, 3);
             dock.Add(energyTrack);
@@ -130,8 +133,8 @@ namespace KingdomRhapsody
             energyBar.style.backgroundColor = Cyan;
             Round(energyBar, 3);
             energyTrack.Add(energyBar);
-            hint = Text(dock, "", 135, 0, 240, 32, 15, Ivory);
-            sprint = ActionButton(dock, "王子疾行", 377, 0, 118, 32, Sprint, true);
+            hint = Text(dock, "", 143, 3, 220, 32, 15, Ivory);
+            sprint = ActionButton(dock, "王子疾行", BattlefieldView.Width - DockInset - 118, 3, 118, 32, Sprint, true);
             sprint.style.fontSize = 16;
 
             cardArt = Get("frames/card-gold");
@@ -139,14 +142,14 @@ namespace KingdomRhapsody
             for (int i = 0; i < hand.Length; i++)
             {
                 int slot = i;
-                hand[i] = MakeCard(dock, slot * 101, false);
+                hand[i] = MakeCard(dock, DockInset + slot * (HandWidth + 6), false);
                 drags[i] = new DuelCardDrag(() => CanSelect(slot),
                     (pointer, _) => BeginDrag(slot, pointer), Drag, EndDrag, CancelDrag,
                     () => ToggleSlot(slot));
                 hand[i].Button.AddManipulator(drags[i]);
                 hand[i].Button.clicked += () => ToggleSlot(slot);
             }
-            next = MakeCard(dock, 405, true);
+            next = MakeCard(dock, BattlefieldView.Width - DockInset - NextWidth, true);
 
             dialog = Box(0, 0, Width, Height);
             dialog.pickingMode = PickingMode.Position;
@@ -425,8 +428,10 @@ namespace KingdomRhapsody
 
         private CardTile MakeCard(VisualElement parent, float x, bool isNext)
         {
+            float width = isNext ? NextWidth : HandWidth;
+            float height = isNext ? NextHeight : HandHeight;
             var button = new Button { name = isNext ? "next-card" : "battle-card" };
-            Place(button, x, 36, isNext ? 90 : 95, 85);
+            Place(button, x, HandTop + HandHeight - height, width, height);
             button.style.marginBottom = 0;
             button.style.marginLeft = 0;
             button.style.marginRight = 0;
@@ -440,17 +445,20 @@ namespace KingdomRhapsody
                 button.pickingMode = PickingMode.Ignore;
                 button.focusable = false;
             }
-            var illustration = Box(4, isNext ? 11 : 4, 83, isNext ? 54 : 59);
+            var illustration = Box(width * .15f, height * .14f, width * .70f, height * .58f);
             button.Add(illustration);
-            var frame = Box(0, 0, isNext ? 90 : 95, 85);
+            var frame = Box(0, 0, width, height);
             button.Add(frame);
-            var strip = Box(4, 61, isNext ? 82 : 87, 20);
-            strip.style.backgroundColor = (Color)new Color32(18, 31, 46, 239);
-            button.Add(strip);
-            Label name = Text(strip, "", 0, 0, isNext ? 82 : 87, 20, 13, Ivory);
-            Label cost = Text(button, "", 5, 4, isNext ? 49 : 22, 20, 13, Ink);
-            cost.style.backgroundColor = Gold;
-            Round(cost, 9);
+            Label name = Text(button, "", width * .11f, height * .77f, width * .78f, height * .16f, isNext ? 11 : 14, Ivory);
+            Label cost;
+            if (isNext)
+                cost = Text(parent, "下一張", x, HandTop, width, HandHeight - height, 14, Ivory);
+            else
+            {
+                cost = Text(button, "", 9, 9, 23, 23, 15, Ink);
+                cost.style.backgroundColor = Gold;
+                Round(cost, 9);
+            }
             parent.Add(button);
             return new CardTile(button, illustration, frame, name, cost);
         }
@@ -536,22 +544,27 @@ namespace KingdomRhapsody
         {
             BattleCard card = (BattleCard)context.visualElement.userData;
             var painter = context.painter2D;
-            var center = new Vector2(42, 30);
+            Rect area = context.visualElement.contentRect;
+            Vector2 center = area.center;
+            float scale = Mathf.Min(area.width, area.height) / 59;
+            if (scale <= 0)
+                return;
             Color baseColor = card.Skill == Skill.Thunder ? Cyan : Gold;
-            BattlefieldView.Circle(painter, center, 18, BattlefieldView.Alpha(baseColor, .18f), true);
+            Vector2 At(float x, float y) => center + new Vector2(x, y) * scale;
+            BattlefieldView.Circle(painter, center, 18 * scale, BattlefieldView.Alpha(baseColor, .18f), true);
             if (card.Skill == Skill.Meteor)
             {
-                BattlefieldView.Line(painter, new Vector2(59, 9), new Vector2(43, 24), baseColor, 6);
-                BattlefieldView.Line(painter, new Vector2(53, 6), new Vector2(37, 24), BattlefieldView.Alpha(Gold, .4f), 3);
-                BattlefieldView.Circle(painter, center, 9, Gold, true);
+                BattlefieldView.Line(painter, At(17, -21), At(1, -6), baseColor, 6 * scale);
+                BattlefieldView.Line(painter, At(11, -24), At(-5, -6), BattlefieldView.Alpha(Gold, .4f), 3 * scale);
+                BattlefieldView.Circle(painter, center, 9 * scale, Gold, true);
             }
             else
             {
                 float offset = card.Skill == Skill.Rift ? 8 : 0;
-                Vector2 a = new Vector2(47 + offset, 10), b = new Vector2(33, 29), c = new Vector2(46, 27), d = new Vector2(36 - offset, 49);
-                BattlefieldView.Line(painter, a, b, baseColor, 4);
-                BattlefieldView.Line(painter, b, c, baseColor, 4);
-                BattlefieldView.Line(painter, c, d, baseColor, 4);
+                Vector2 a = At(5 + offset, -20), b = At(-9, -1), c = At(4, -3), d = At(-6 - offset, 19);
+                BattlefieldView.Line(painter, a, b, baseColor, 4 * scale);
+                BattlefieldView.Line(painter, b, c, baseColor, 4 * scale);
+                BattlefieldView.Line(painter, c, d, baseColor, 4 * scale);
             }
         }
 

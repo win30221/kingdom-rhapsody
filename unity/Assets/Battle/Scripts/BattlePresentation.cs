@@ -101,6 +101,23 @@ namespace KingdomRhapsody
         internal float Health(int seat) => seat == 0 ? HealthA : HealthB;
     }
 
+    internal readonly struct BattleActorSample
+    {
+        internal readonly Vector2 Position, Heading;
+        internal readonly BattlePose Pose;
+        internal readonly double Elapsed;
+        internal readonly int PoseLength;
+
+        internal BattleActorSample(Vector2 position, Vector2 heading, BattlePose pose, double elapsed, int poseLength)
+        {
+            Position = position;
+            Heading = heading;
+            Pose = pose;
+            Elapsed = elapsed;
+            PoseLength = poseLength;
+        }
+    }
+
     internal sealed class BattlePresentation
     {
         private readonly SnapshotBuffer<BattleSceneFrame> buffer = new SnapshotBuffer<BattleSceneFrame>(12);
@@ -167,7 +184,9 @@ namespace KingdomRhapsody
             replicas.Apply(1, visible.Tick, Visible.Actors);
         }
 
-        internal Vector2 Position(BattleActorFrame actor, out BattleActorFrame pose) => Position(actor, out pose, out _);
+        internal Vector2 Position(BattleActorFrame actor, out BattleActorFrame pose) => Sample(actor, out pose).Position;
+
+        internal BattleActorSample Sample(BattleActorFrame actor) => Sample(actor, out _);
 
         internal Vector2 ProjectileTarget(BattleEffect projectile, IReadOnlyList<BattleEffect> effects)
         {
@@ -189,20 +208,33 @@ namespace KingdomRhapsody
             return projectile.Target;
         }
 
-        internal Vector2 Position(BattleActorFrame actor, out BattleActorFrame pose, out double walkPhase)
+        private BattleActorSample Sample(BattleActorFrame actor, out BattleActorFrame pose)
         {
             pose = actor;
-            walkPhase = actor.WalkPhase;
-            if (!buffer.TryBracket(RenderTick, actor.Key, select, out SnapshotBracket<BattleActorFrame> bracket) ||
-                !bracket.HasAfter)
-                return actor.Position;
+            Vector2 position = actor.Position, stride = Vector2.Zero;
+            double walkPhase = actor.WalkPhase;
+            if (buffer.TryBracket(RenderTick, actor.Key, select, out SnapshotBracket<BattleActorFrame> bracket) &&
+                bracket.HasAfter)
+            {
+                if (bracket.After.PoseTick <= RenderTick && bracket.After.PoseTick > actor.PoseTick)
+                    pose = bracket.After;
 
-            if (bracket.After.PoseTick <= RenderTick && bracket.After.PoseTick > actor.PoseTick)
-                pose = bracket.After;
-            if (pose.Pose == BattlePose.Walk && bracket.Before.PoseTick == bracket.After.PoseTick)
-                walkPhase = bracket.Before.WalkPhase + (bracket.After.WalkPhase - bracket.Before.WalkPhase) * bracket.Fraction;
-            Vector2 position = Vector2.Lerp(bracket.Before.Position, bracket.After.Position, (float)bracket.Fraction);
-            return Battlefield.LimitMovement(bracket.Before.Position, position, 0);
+                Vector2 before = bracket.Before.Position;
+                Vector2 blended = Vector2.Lerp(before, bracket.After.Position, (float)bracket.Fraction);
+                position = Battlefield.LimitMovement(before, blended, 0);
+                float phaseDelta = bracket.After.WalkPhase - bracket.Before.WalkPhase;
+                walkPhase = bracket.Before.WalkPhase + phaseDelta * bracket.Fraction;
+                if (phaseDelta > 0)
+                    stride = position - before;
+            }
+
+            // A short stride can begin and end between two snapshots. The walk phase
+            // records intentional footsteps and stays fixed when a unit is only pushed.
+            bool showStride = pose.Pose == BattlePose.Idle && (pose.Status & BattleStatus.Stun) == 0 &&
+                stride.LengthSquared() > .000001f;
+            BattlePose animation = showStride ? BattlePose.Walk : pose.Pose;
+            double elapsed = animation == BattlePose.Walk ? walkPhase : RenderTick - pose.PoseTick;
+            return new BattleActorSample(position, showStride ? stride : pose.Heading, animation, elapsed, pose.PoseLength);
         }
     }
 }
