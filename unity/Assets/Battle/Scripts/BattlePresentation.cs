@@ -201,7 +201,8 @@ namespace KingdomRhapsody
                 pose = bracket.After;
             if (pose.Pose == BattlePose.Walk && bracket.Before.PoseTick == bracket.After.PoseTick)
                 walkPhase = bracket.Before.WalkPhase + (bracket.After.WalkPhase - bracket.Before.WalkPhase) * bracket.Fraction;
-            return Vector2.Lerp(bracket.Before.Position, bracket.After.Position, (float)bracket.Fraction);
+            Vector2 position = Vector2.Lerp(bracket.Before.Position, bracket.After.Position, (float)bracket.Fraction);
+            return Battlefield.LimitMovement(bracket.Before.Position, position, 0);
         }
     }
 }

@@ -328,8 +328,7 @@ namespace KingdomRhapsody
                         continue;
                     Color color = BattleSession.MayDeploy(lastTerritory, 1 - match.Seat, col, row)
                         ? new Color32(249, 188, 84, 132) : new Color32(49, 168, 237, 135);
-                    Vector2 at = ToBoard(Battlefield.Cell(col, row));
-                    Rectangle(painter, new Rect(at.x - Tile / 2 + 1, at.y - Tile / 2 + 1, Tile - 2, Tile - 2), color);
+                    Rectangle(painter, DeploymentTile(col, row, 1), color);
                 }
         }
 
@@ -341,7 +340,7 @@ namespace KingdomRhapsody
                 Vector2 point = ToBoard(marker.Point);
                 if (!marker.Card.IsSpell)
                 {
-                    Border(painter, new Rect(point.x - Tile / 2, point.y - Tile / 2, Tile, Tile), color, 2);
+                    Border(painter, DeploymentTile(Battlefield.Column(marker.Point), Battlefield.Row(marker.Point), 0), color, 2);
                 }
                 else if (marker.Card.Skill == Skill.Rift)
                 {
@@ -355,6 +354,22 @@ namespace KingdomRhapsody
                     Circle(painter, point, marker.Card.Range * Tile, color, false, 2);
                 }
             }
+        }
+
+        private Rect DeploymentTile(int column, int row, float inset)
+        {
+            WorldPoint cell = Battlefield.Cell(column, row);
+            Vector2 at = ToBoard(cell);
+            float top = at.y - Tile / 2 + inset, bottom = at.y + Tile / 2 - inset;
+            if (Math.Abs(cell.Y) >= Battlefield.Shore)
+            {
+                float bank = ToBoard(new WorldPoint(0, Math.Sign(cell.Y) * Battlefield.Shore)).y;
+                if (at.y < bank)
+                    bottom = Math.Min(bottom, bank);
+                else
+                    top = Math.Max(top, bank);
+            }
+            return new Rect(at.x - Tile / 2 + inset, top, Tile - 2 * inset, bottom - top);
         }
 
         private void DrawEffects(Painter2D painter)

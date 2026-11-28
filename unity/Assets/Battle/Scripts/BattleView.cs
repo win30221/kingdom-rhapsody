@@ -11,8 +11,6 @@ namespace KingdomRhapsody
     {
         private const float Width = 540, Height = 1070, Left = (Width - BattlefieldView.Width) / 2;
         private const float BoardTop = 56, DockTop = BoardTop + BattlefieldView.Height + 7;
-        // Inner floor in the 941 × 1672 Rift Courts texture. Walls are outside the board.
-        private static readonly Rect MapFloor = new Rect(60f / 941, 80f / 1672, 821f / 941, 1512f / 1672);
         private static readonly Color Gold = new Color32(255, 221, 158, 255);
         private static readonly Color Ivory = new Color32(255, 248, 224, 255);
         private static readonly Color Cyan = new Color32(133, 225, 244, 255);
@@ -80,10 +78,14 @@ namespace KingdomRhapsody
             stage = Box(0, 0, Width, Height);
             viewport.Add(stage);
             root.RegisterCallback<GeometryChangedEvent>(_ => Layout(true));
-            AddMapArt();
+            var mapLayer = Box(Left, BoardTop, BattlefieldView.Width, BattlefieldView.Height);
+            // Apply the inverse grid-to-art aspect adjustment to the art, input, and effects together.
+            mapLayer.style.scale = new Scale(new Vector2(Battlefield.ArtScaleY / Battlefield.ArtScaleX, 1));
+            stage.Add(mapLayer);
+            AddMapArt(mapLayer);
             board = new BattlefieldView(art, Get("frames/ground-shadow"));
-            Place(board, Left, BoardTop, BattlefieldView.Width, BattlefieldView.Height);
-            stage.Add(board);
+            Place(board, 0, 0, BattlefieldView.Width, BattlefieldView.Height);
+            mapLayer.Add(board);
             board.RegisterCallback<PointerDownEvent>(BoardDown);
             board.RegisterCallback<PointerMoveEvent>(BoardMove);
             board.RegisterCallback<PointerUpEvent>(BoardUp);
@@ -349,7 +351,7 @@ namespace KingdomRhapsody
             {
                 PlayResult.Pending => "等待確認",
                 PlayResult.Energy => "能量不足",
-                PlayResult.Territory => "此格尚未解鎖",
+                PlayResult.Territory => "此格不能下兵",
                 PlayResult.Occupied => "此格已有角色",
                 PlayResult.UnitLimit => "戰場兵力已達上限",
                 PlayResult.Bounds => "請在戰場內放開",
@@ -411,14 +413,14 @@ namespace KingdomRhapsody
             princeHealth[seat] = Text(track, "", 0, 0, 162, 21, 15, Ivory);
         }
 
-        private void AddMapArt()
+        private static void AddMapArt(VisualElement mapLayer)
         {
-            float width = BattlefieldView.Width / MapFloor.width;
-            float height = BattlefieldView.Height / MapFloor.height;
-            var map = Box(Left - width * MapFloor.x, BoardTop - height * MapFloor.y, width, height);
+            float width = 2 * Battlefield.ArtHalfWidth * Battlefield.ArtScaleX * BattlefieldView.Tile;
+            float height = 2 * Battlefield.ArtHalfHeight * Battlefield.ArtScaleY * BattlefieldView.Tile;
+            var map = Box((BattlefieldView.Width - width) / 2, (BattlefieldView.Height - height) / 2, width, height);
             map.name = "rift-courts-map";
             Image(map, Resources.Load<Sprite>("Battle/Maps/RiftCourts"), ScaleMode.StretchToFill);
-            stage.Add(map);
+            mapLayer.Add(map);
         }
 
         private CardTile MakeCard(VisualElement parent, float x, bool isNext)

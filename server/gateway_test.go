@@ -96,6 +96,18 @@ func TestTwoIndependentClients(t *testing.T) {
 	if !guardFound {
 		t.Fatal("seat B's local left guard was not placed on the world right")
 	}
+	var guardX, guardY float32
+	guardFound = false
+	for _, actor := range a.State.Actors {
+		if actor.S == 0 && actor.Guard && actor.X < 0 {
+			guardX, guardY = actor.X, actor.Y
+			guardFound = true
+			break
+		}
+	}
+	if !guardFound {
+		t.Fatal("seat A's world-left guard was not found")
+	}
 
 	inBattle := func(f testFrame) bool { return f.Type == "state" && f.State.Tick >= 60 }
 	until(t, ctx, first, inBattle)
@@ -110,8 +122,8 @@ func TestTwoIndependentClients(t *testing.T) {
 	if got := ack(t, ctx, second, 1); got.Result != 5 || got.Seat != 1 {
 		t.Fatalf("wrong territory response: %+v", got)
 	}
-	send(t, ctx, first, request{Type: "play", Match: a.Match, Seq: 1, Seat: 1, Slot: 0, Card: "bow-recruit", X: .5, Y: -5.5})
-	send(t, ctx, second, request{Type: "play", Match: a.Match, Seq: 2, Slot: 0, Card: "meteorfall", X: -7.5, Y: -11.5})
+	send(t, ctx, first, request{Type: "play", Match: a.Match, Seq: 1, Seat: 1, Slot: 0, Card: "bow-recruit", X: -3.5, Y: -14.5})
+	send(t, ctx, second, request{Type: "play", Match: a.Match, Seq: 2, Slot: 0, Card: "meteorfall", X: guardX, Y: guardY})
 	a = until(t, ctx, first, func(f testFrame) bool { return f.Type == "state" && f.State.ProcessedSeq == 1 })
 	if a.State.Hand[0] == "bow-recruit" || a.State.Energy < 3 || a.State.Energy >= 4 {
 		t.Fatalf("the acknowledged sequence must include the deployment cost and new hand: %+v", a)

@@ -9,7 +9,10 @@ internal static class Program
     private static void Main()
     {
         Run("saved deck and guards", SavedLoadout);
-        Run("90 / 162 / 234 grid cells and overlapping claims", Territory);
+        Run("full friendly courts and overlapping stone deployment", Territory);
+        Run("bank deployment aligns to stone and rejects water", BankDeployment);
+        Run("deployed troops cross their three assigned bridges from either court", ThreeBridges);
+        Run("changing bridges routes through a court and pushes stop at stone edges", BridgeDetour);
         Run("deployment rejection leaves energy and hand unchanged", Deployment);
         Run("guard detection, leash and return", GuardReturn);
         Run("guard aggro checks the home radius and weapon edges", GuardDetectionEdges);
@@ -107,9 +110,23 @@ internal static class Program
     private static void Territory()
     {
         var match = Create("footman", "bow-recruit", "shieldman", "light-cavalry");
-        Check(GridCount(match, 0) == 90 && GridCount(match, 1) == 90);
+        Check(GridCount(match, 0) == 216 && GridCount(match, 1) == 216);
+        foreach (int seat in new[] { 0, 1 })
+            for (int col = 0; col < Battlefield.Columns; col++)
+                for (int row = 0; row < Battlefield.Rows; row++)
+                {
+                    bool court = Battlefield.Cell(col, row).Y * (seat == 0 ? -1 : 1) >= Battlefield.Shore;
+                    Check(match.MayDeploy(seat, col, row) == court);
+                    if (court)
+                        foreach (BattleCard card in BattleCatalog.Cards.Where(card => !card.IsSpell))
+                        {
+                            Vector2 spawn = Battlefield.SpawnPoint(col, row, card.Radius);
+                            Check(Battlefield.IsWalkable(spawn, card.Radius));
+                            Check(Battlefield.Column(spawn) == col && Battlefield.Row(spawn) == row);
+                        }
+                }
         Guard(match, 1, 0).Health = 0;
-        Check(GridCount(match, 0) == 162 && GridCount(match, 1) == 90);
+        Check(GridCount(match, 0) == 250 && GridCount(match, 1) == 216);
         Check(match.MayDeploy(0, 3, 9) && match.MayDeploy(1, 3, 9));
         BattleCard next = match.Hand(1, 0);
         Deploy(match, 0, 0, 3, 9);
@@ -118,14 +135,100 @@ internal static class Program
         Guard(match, 1, 1).Health = 0;
         Guard(match, 0, 0).Health = 0;
         Guard(match, 0, 1).Health = 0;
-        Check(GridCount(match, 0) == 234 && GridCount(match, 1) == 234);
+        Check(GridCount(match, 0) == 284 && GridCount(match, 1) == 284);
         Check(!match.MayDeploy(0, 8, 16) && !match.MayDeploy(0, 0, 3) && match.MayDeploy(0, 17, 20));
         int overlap = 0;
         for (int row = 0; row < Battlefield.Rows; row++)
             for (int col = 0; col < Battlefield.Columns; col++)
                 if (match.MayDeploy(0, col, row) && match.MayDeploy(1, col, row))
                     overlap++;
-        Check(overlap == 168);
+        Check(overlap == 104);
+    }
+
+    private static void BankDeployment()
+    {
+        var match = Create("footman", "shieldman");
+        BattleCard footman = match.Hand(0, 0);
+        Vector2 bank = Battlefield.Cell(5, 20), water = new Vector2(bank.X, -4.1f);
+        Guard(match, 1, 0).Health = 0;
+        Check(Battlefield.Row(water) == Battlefield.Row(bank) && !Battlefield.IsWalkable(water));
+        var aim = new BattleAim(0, footman);
+        aim.Update(water, Vector2.UnitY, false);
+        Check(aim.HasTarget && aim.Point == water);
+        Check(match.Play(0, 0, footman, aim.Point, Vector2.UnitY) == PlayResult.Territory);
+        Check(match.Play(0, 0, footman, new Vector2(bank.X, 0), Vector2.UnitY) == PlayResult.Territory);
+        Check(Near(match.Energy(0), 5) && match.Hand(0, 0) == footman);
+        aim.Update(bank, Vector2.UnitY, false);
+        Check(aim.Point == Battlefield.SpawnPoint(5, 20, footman.Radius));
+        BattleUnit unit = Deploy(match, 0, 0, 5, 20);
+        Check(unit.Position == aim.Point && Battlefield.IsWalkable(unit.Position, unit.Card.Radius));
+    }
+
+    private static void ThreeBridges()
+    {
+        foreach (int seat in new[] { 0, 1 })
+            for (int lane = 0; lane < 3; lane++)
+            {
+                var match = Create("footman");
+                foreach (BattleUnit guard in match.Units.Where(unit => unit.GuardSide >= 0))
+                    guard.Health = 0;
+                BattleUnit unit = Deploy(match, seat, 0, lane * 6 + 1, seat == 0 ? 30 : 1);
+                bool crossed = false, reached = false;
+                int end = match.Tick + 18 * BattleMatch.TickRate;
+                while (match.Tick < end && !reached)
+                {
+                    match.Step();
+                    Check(Battlefield.IsWalkable(unit.Position, unit.Card.Radius));
+                    if (Math.Abs(unit.Position.Y) < Battlefield.Shore)
+                    {
+                        crossed = true;
+                        Check(Battlefield.Lane(Battlefield.Column(unit.Position)) == lane);
+                    }
+                    reached = unit.Position.Y * (seat == 0 ? 1 : -1) > Battlefield.Shore + unit.Card.Radius;
+                }
+                Check(crossed && reached);
+            }
+    }
+
+    private static void BridgeDetour()
+    {
+        const float radius = .57f;
+        for (int fromLane = 0; fromLane < 3; fromLane++)
+            for (int toLane = 0; toLane < 3; toLane++)
+            {
+                if (fromLane == toLane)
+                    continue;
+                Vector2 start = new Vector2(Battlefield.BridgeCenter(fromLane), 0);
+                Vector2 goal = new Vector2(Battlefield.BridgeCenter(toLane), 0);
+                Check(!Battlefield.CanTravel(start, goal, radius));
+                Vector2 push = Battlefield.LimitMovement(start, goal, radius);
+                Check(Battlefield.IsWalkable(push, radius) && Battlefield.Lane(Battlefield.Column(push)) == fromLane);
+
+                Check(FollowRoute(start, goal, radius));
+            }
+
+        float shoulderX = 2.08f * Battlefield.ArtScaleX - radius - .02f;
+        float shoulderY = 3.2f * Battlefield.ArtScaleY + radius + .05f;
+        Vector2 nearLanding = new Vector2(shoulderX, -shoulderY), farLanding = new Vector2(shoulderX, shoulderY);
+        Check(!Battlefield.CanTravel(nearLanding, farLanding, radius));
+        FollowRoute(nearLanding, farLanding, radius);
+        FollowRoute(new Vector2(0, -6), farLanding, radius);
+    }
+
+    private static bool FollowRoute(Vector2 point, Vector2 goal, float radius)
+    {
+        bool visitedCourt = false;
+        for (int step = 0; step < 500 && Vector2.DistanceSquared(point, goal) > .000001f; step++)
+        {
+            Vector2 waypoint = Battlefield.NextWaypoint(point, goal, radius, -1);
+            Vector2 offset = waypoint - point;
+            Vector2 next = offset.Length() <= .12f ? waypoint : point + Vector2.Normalize(offset) * .12f;
+            point = Battlefield.LimitMovement(point, next, radius);
+            visitedCourt |= Math.Abs(point.Y) >= Battlefield.Shore + radius;
+            Check(Battlefield.IsWalkable(point, radius));
+        }
+        Check(Vector2.DistanceSquared(point, goal) <= .000001f);
+        return visitedCourt;
     }
 
     private static void Deployment()
@@ -611,7 +714,7 @@ internal static class Program
     private static void SupportAndCone()
     {
         var match = Create("field-medic");
-        BattleUnit medic = Deploy(match, 0, 0, 3, 25);
+        BattleUnit medic = Deploy(match, 0, 0, 3, 23);
         BattleUnit guard = Guard(match, 0, 0);
         Vector2 before = medic.Position;
         match.Step();

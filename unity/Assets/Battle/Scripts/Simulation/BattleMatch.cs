@@ -275,10 +275,10 @@ namespace KingdomRhapsody
                 return PlayResult.Accepted;
 
             int col = Battlefield.Column(point), row = Battlefield.Row(point);
-            if (!MayDeploy(seat, col, row))
+            Vector2 center = Battlefield.SpawnPoint(col, row, expected.Radius);
+            if (!Battlefield.IsWalkable(point) || !MayDeploy(seat, col, row) || !Battlefield.IsWalkable(center, expected.Radius))
                 return PlayResult.Territory;
 
-            Vector2 center = Battlefield.Cell(col, row);
             int count = 0;
             foreach (BattleUnit unit in units)
             {
@@ -310,7 +310,7 @@ namespace KingdomRhapsody
             }
             else
             {
-                Vector2 center = Battlefield.Cell(Battlefield.Column(point), Battlefield.Row(point));
+                Vector2 center = Battlefield.SpawnPoint(Battlefield.Column(point), Battlefield.Row(point), expected.Radius);
                 AddUnit(seat, expected, center);
             }
 
@@ -488,7 +488,8 @@ namespace KingdomRhapsody
             Vector2 goal = targetUnit?.Position ?? AdvanceGoal(unit);
             float stopDistance = targetUnit != null && unit.Card.IsMelee
                 ? unit.Card.Radius + targetUnit.Card.Radius : 0;
-            Move(unit, goal, stopDistance);
+            int bridge = targetUnit == null && unit.GuardSide < 0 ? Battlefield.Lane(Battlefield.Column(unit.Home)) : -1;
+            Move(unit, goal, stopDistance, bridge);
         }
 
         private static void Face(BattleUnit unit, Vector2 target)
@@ -498,11 +499,12 @@ namespace KingdomRhapsody
                 unit.Heading = Vector2.Normalize(direction);
         }
 
-        private void Move(BattleUnit unit, Vector2 goal, float stopDistance = 0)
+        private void Move(BattleUnit unit, Vector2 goal, float stopDistance = 0, int preferredBridge = -1)
         {
-            Vector2 delta = goal - unit.Position;
+            Vector2 waypoint = Battlefield.NextWaypoint(unit.Position, goal, unit.Card.Radius, preferredBridge);
+            Vector2 delta = waypoint - unit.Position;
             float distance = delta.Length();
-            float step = Math.Min(distance - stopDistance, unit.Card.Speed * SlowFactor(unit) / TickRate);
+            float step = Math.Min(distance - (waypoint == goal ? stopDistance : 0), unit.Card.Speed * SlowFactor(unit) / TickRate);
             if (step <= .0001f)
             {
                 unit.SetPose(BattlePose.Idle, Tick);
@@ -535,7 +537,7 @@ namespace KingdomRhapsody
             if (unit.GuardSide >= 0)
                 return unit.Home;
             if (unit.Card.IsSupport)
-                return new Vector2(unit.LaneX, unit.Seat == 0 ? 4 : -4);
+                return new Vector2(Battlefield.BridgeCenter(Battlefield.Lane(Battlefield.Column(unit.Home))), unit.Seat == 0 ? 4 : -4);
 
             BattleUnit enemyPrince = Prince(1 - unit.Seat);
             float forward = unit.Seat == 0 ? 1 : -1;
@@ -943,7 +945,7 @@ namespace KingdomRhapsody
         {
             if (unit.GuardSide >= 0)
                 point = Battlefield.InsideLeash(point, unit.Home);
-            return Battlefield.Clamp(point, unit.Card.Radius);
+            return Battlefield.LimitMovement(unit.Position, point, unit.Card.Radius);
         }
     }
 }

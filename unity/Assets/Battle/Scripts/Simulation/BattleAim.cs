@@ -39,7 +39,8 @@ namespace KingdomRhapsody
                 return;
             }
 
-            Point = Card.IsSpell ? location : Battlefield.Cell(Battlefield.Column(location), Battlefield.Row(location));
+            Point = Card.IsSpell || !Battlefield.IsWalkable(location) ? location :
+                Battlefield.SpawnPoint(Battlefield.Column(location), Battlefield.Row(location), Card.Radius);
         }
 
         internal void Reset()

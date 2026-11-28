@@ -203,9 +203,9 @@ namespace KingdomRhapsody
                 return PlayResult.Accepted;
 
             int col = Battlefield.Column(point), row = Battlefield.Row(point);
-            if (!MayDeploy(Territory, Seat, col, row))
+            Vector2 center = Battlefield.SpawnPoint(col, row, card.Radius);
+            if (!Battlefield.IsWalkable(point) || !MayDeploy(Territory, Seat, col, row) || !Battlefield.IsWalkable(center, card.Radius))
                 return PlayResult.Territory;
-            Vector2 center = Battlefield.Cell(col, row);
             int count = 0;
             foreach (BattleActorFrame actor in scene.Actors)
             {
