@@ -23,7 +23,7 @@ internal static class Program
         Run("both teams take central hazard damage at 8 s", Hazard);
         Run("three spell shapes, timing and prince damage", Spells);
         Run("rift release outside the battlefield cancels drag and board aim", RiftAim);
-        Run("all cards can be played from a legal hand", EveryCard);
+        Run("all collection cards can enter a deck and be played from either seat", EveryCard);
         Run("melee damage is applied on the contact tick", AttackTiming);
         Run("projectile launches first then damage and presentation agree", Projectile);
         Run("a projectile follows the defeated target to the blast center", ProjectileTargetDeath);
@@ -323,12 +323,39 @@ internal static class Program
 
     private static void EveryCard()
     {
+        int nextSlot = 0;
         foreach (BattleCard card in BattleCatalog.Cards)
         {
-            var match = Create(card.Id);
-            Check(match.Play(0, 0, card, Battlefield.Cell(9, 21), Vector2.UnitY) == PlayResult.Accepted);
-            Check(Near(match.Energy(0), 5 - card.Cost));
-            Check(match.Units.Count == (card.IsSpell ? 6 : 7));
+            var lobby = new LobbyLoadout
+            {
+                deck = Roster.Troops.Where(troop => troop != card).Take(Roster.DeckSize).Select(troop => troop.Id).ToArray()
+            };
+            lobby.Normalize();
+            int slot = nextSlot++ % BattleMatch.HandSize;
+            string previous = lobby.deck[slot];
+            Check(lobby.Reserves().Contains(card.Id));
+            Check(lobby.Replace(slot, card.Id));
+            string[] reserves = lobby.Reserves();
+            Check(reserves.Contains(previous) && !reserves.Contains(card.Id));
+            BattleLoadout equipped = lobby.Snapshot();
+            BattleLoadout remote = WireLoadout.From(equipped).Validate();
+            Check(remote != null && remote.TroopIds[slot] == card.Id);
+
+            var match = new BattleMatch(equipped, remote);
+            StepTo(match, BattleMatch.OpeningTicks);
+            for (int seat = 0; seat < 2; seat++)
+            {
+                WireBattleState before = WireBattleState.From(match, seat, new BattleSceneFrame(match), 0);
+                Check(before.hand[slot] == card.Id);
+                int row = seat == 0 ? 21 : Battlefield.Rows - 1 - 21;
+                Vector2 target = Battlefield.Cell(9, row);
+                Vector2 direction = seat == 0 ? Vector2.UnitY : -Vector2.UnitY;
+                int units = match.Units.Count;
+                Check(match.Play(seat, slot, card, target, direction) == PlayResult.Accepted);
+                Check(Near(match.Energy(seat), before.energy - card.Cost));
+                Check(match.Hand(seat, slot).Id == before.nextCard);
+                Check(match.Units.Count == units + (card.IsSpell ? 0 : 1));
+            }
         }
     }
 

@@ -96,6 +96,7 @@ namespace KingdomRhapsody
         private Button goToDeck;
         private Button backToLobby;
         private Button soundButton;
+        private RectTransform cardActionBackdrop;
         private RectTransform cardActionLayer;
         private RectTransform cardActionMenu;
         private CanvasGroup cardActionFade;
@@ -127,12 +128,7 @@ namespace KingdomRhapsody
         private Card[] reserveCards;
         [SerializeField, Tooltip("Fixed matchmaking URL. Leave empty to use the Web page origin or the local desktop server.")]
         private string battleServerUrl = "";
-        // Editor/development-only layout fixtures. These never enter the roster,
-        // loadout, save data, or battle selection.
-        [SerializeField, Range(0, 100)] private int collectionDemoCount = 21;
-        private Card[] collectionDemoCards = Array.Empty<Card>();
-        private int CollectionCardCount => reserveCards.Length + collectionDemoCards.Length;
-        private int ReservePageCount => Mathf.Max(1, (CollectionCardCount + reservePageSize - 1) / reservePageSize);
+        private int ReservePageCount => Mathf.Max(1, (reserveCards.Length + reservePageSize - 1) / reservePageSize);
         private string[] reserveIds;
         private Text guardTitle;
         private Text soundState;
@@ -299,6 +295,18 @@ namespace KingdomRhapsody
         private void BuildDeck()
         {
             deck = Stretch(viewport, "TroopDeck");
+            // Place dismissal behind the cards so a tap can select a different card directly.
+            cardActionBackdrop = Stretch(deck, "DismissCardActions");
+            var outside = cardActionBackdrop.gameObject.AddComponent<Image>();
+            outside.color = Color.clear;
+            outside.raycastTarget = true;
+            var dismiss = cardActionBackdrop.gameObject.AddComponent<Button>();
+            dismiss.targetGraphic = outside;
+            dismiss.transition = Selectable.Transition.None;
+            dismiss.navigation = new Navigation { mode = Navigation.Mode.None };
+            dismiss.onClick.AddListener(DismissCardActions);
+            cardActionBackdrop.gameObject.SetActive(false);
+
             RectTransform header = DesignGroup(deck, "Header", new Vector2(.5f, 1f), HeaderHeight);
             Header(header, "PageTitle", "帶兵牌組", new Rect(235, 14, 530, 234), true);
             // The back sprite's visible arrow is optically left of its texture center.
@@ -334,17 +342,7 @@ namespace KingdomRhapsody
                 new Rect(650, 18, 245, 104), 44, Gold, CancelReplacement, Cue.Back, out _);
             replaceBar.gameObject.SetActive(false);
 
-            // A transparent dismiss layer anchors two independent buttons to the chosen card.
-            // No permanent footer buttons, information panel or new baked UI artwork.
             cardActionLayer = Stretch(deck, "CardActionLayer");
-            var outside = cardActionLayer.gameObject.AddComponent<Image>();
-            outside.color = Color.clear;
-            outside.raycastTarget = true;
-            var dismiss = cardActionLayer.gameObject.AddComponent<Button>();
-            dismiss.targetGraphic = outside;
-            dismiss.transition = Selectable.Transition.None;
-            dismiss.navigation = new Navigation { mode = Navigation.Mode.None };
-            dismiss.onClick.AddListener(() => { Play(Cue.Back); DismissCardActions(); });
             cardActionMenu = Box(cardActionLayer, "CardActions", new Rect(0, 0, 436, 104));
             cardActionFade = cardActionMenu.gameObject.AddComponent<CanvasGroup>();
             inspectCard = TextButton(cardActionMenu, "InspectCard", "看資訊", "buttons/secondary-blue",
@@ -385,15 +383,22 @@ namespace KingdomRhapsody
                     TroopCardRect(i, CardGridX - ReserveViewportX, ReserveGridPadding), 31,
                     () => SelectReserve(slot), Cue.Tap);
             }
-            BuildCollectionDemoCards();
             reserveEmpty = Label(reserveGrid, "EmptyCollection", "沒有未上陣的卡牌",
                 new Rect(0, 0, ReserveViewportWidth, TroopCardHeight), 36, Ivory);
-            reserveEmpty.gameObject.SetActive(CollectionCardCount == 0);
+            reserveEmpty.gameObject.SetActive(reserveCards.Length == 0);
         }
 
         private void BindReservePageInput()
         {
             var trigger = reserveGrid.gameObject.AddComponent<EventTrigger>();
+            var tap = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
+            tap.callback.AddListener(data =>
+            {
+                if (((PointerEventData)data).button == PointerEventData.InputButton.Left)
+                    DismissCardActions();
+            });
+            trigger.triggers.Add(tap);
+
             var scroll = new EventTrigger.Entry { eventID = EventTriggerType.Scroll };
             scroll.callback.AddListener(data =>
             {
@@ -418,50 +423,22 @@ namespace KingdomRhapsody
 
         private void TurnReservePage(int direction)
         {
-            if (pendingTroop != null || cardActionLayer.gameObject.activeSelf || activeDialog != null)
+            if (pendingTroop != null || activeDialog != null)
                 return;
             int page = Mathf.Clamp(reservePage + direction, 0, ReservePageCount - 1);
             if (page == reservePage)
                 return;
+            CloseCardActions();
             reservePage = page;
-            LayoutReservePage();
+            RefreshDeck();
 
             GameObject focused = EventSystem.current?.currentSelectedGameObject;
             if (focused == reservePrevious.gameObject && !reservePrevious.interactable)
                 Focus(reserveNext);
             else if (focused == reserveNext.gameObject && !reserveNext.interactable)
                 Focus(reservePrevious);
-        }
-
-        private void BuildCollectionDemoCards()
-        {
-            if ((!Application.isEditor && !Debug.isDebugBuild) || Roster.Troops.Length == 0)
-                return;
-
-            int count = Mathf.Clamp(collectionDemoCount, 0, 100);
-            collectionDemoCards = new Card[count];
-            for (int i = 0; i < count; i++)
-            {
-                // Reuse actual character art to evaluate the real grid, not
-                // placeholder silhouettes or new production troop IDs.
-                var troop = Roster.Troops[i % Roster.Troops.Length];
-                Card card = MakeCard(reserveGrid, "CollectionDemo" + (i + 1),
-                    TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, ReserveGridPadding),
-                    31, () => { }, Cue.Silent);
-                SetCard(card, TroopPortrait(troop.Id), troop.Name, "card-gold", false);
-                var colors = card.Button.colors;
-                colors.disabledColor = Color.white;
-                card.Button.colors = colors;
-                card.Button.interactable = false;
-                card.Button.navigation = new Navigation { mode = Navigation.Mode.None };
-
-                var tag = Box(card.Visual, "DemoTag", new Rect(12, 5, 86, 23)).gameObject.AddComponent<Image>();
-                tag.color = new Color32(17, 35, 63, 225);
-                tag.raycastTarget = false;
-                Label(tag.transform, "DemoLabel", "DEMO " + (i + 1).ToString("00"),
-                    new Rect(0, 0, 86, 23), 17, Gold);
-                collectionDemoCards[i] = card;
-            }
+            else if (focused == null || !focused.activeInHierarchy)
+                Focus(reserveCards[reservePage * reservePageSize].Button);
         }
 
         private Card MakeCard(Transform parent, string name, Rect rect, int size, Action click, Cue cue)
@@ -677,8 +654,6 @@ namespace KingdomRhapsody
                 card.VisualGroup.alpha = replacing && !selected ? .42f : 1f;
                 card.Button.interactable = !replacing;
             }
-            foreach (Card demo in collectionDemoCards)
-                demo.VisualGroup.alpha = replacing ? .42f : 1f;
             replaceBar.gameObject.SetActive(replacing);
             LayoutDeckRegions();
             if (replacing)
@@ -725,6 +700,7 @@ namespace KingdomRhapsody
             addCard.gameObject.SetActive(IsReserve(id));
             actionOpened = Time.unscaledTime;
             cardActionFade.alpha = 0f;
+            cardActionBackdrop.gameObject.SetActive(true);
             cardActionLayer.gameObject.SetActive(true);
             cardActionLayer.SetAsLastSibling();
             RefreshDeck();
@@ -765,16 +741,19 @@ namespace KingdomRhapsody
         {
             selectedCard = null;
             selectedTroop = null;
+            cardActionBackdrop.gameObject.SetActive(false);
             cardActionLayer.gameObject.SetActive(false);
         }
 
         private void DismissCardActions()
         {
             Card origin = selectedCard;
+            if (origin == null)
+                return;
+            Play(Cue.Back);
             CloseCardActions();
             RefreshDeck();
-            if (origin != null)
-                Focus(origin.Button);
+            Focus(origin.Button);
         }
 
         private void AddSelected()
@@ -977,10 +956,7 @@ namespace KingdomRhapsody
                 CloseDialog();
             }
             else if (cardActionLayer.gameObject.activeSelf)
-            {
-                Play(Cue.Back);
                 DismissCardActions();
-            }
             else if (pendingTroop != null)
             {
                 Play(Cue.Back);
@@ -1043,7 +1019,7 @@ namespace KingdomRhapsody
 
             int selectedIndex = replacing ? Array.IndexOf(reserveIds, pendingTroop) : Array.IndexOf(reserveCards, selectedCard);
             int anchorIndex = selectedIndex >= 0 ? selectedIndex : reservePage * reservePageSize;
-            int totalRows = Mathf.Max(1, (CollectionCardCount + CardColumns - 1) / CardColumns);
+            int totalRows = Mathf.Max(1, (reserveCards.Length + CardColumns - 1) / CardColumns);
             float cardSpace = Mathf.Max(1f, viewHeight - 2f * ReserveGridPadding);
             int rowsThatFit = Mathf.FloorToInt((cardSpace / ReserveMinCardScale + CardRowGap) / (TroopCardHeight + CardRowGap));
             int rowsPerPage = Mathf.Clamp(rowsThatFit, 1, totalRows);
@@ -1058,15 +1034,12 @@ namespace KingdomRhapsody
         private void LayoutReservePage()
         {
             int first = reservePage * reservePageSize;
-            int cardsOnPage = Mathf.Min(reservePageSize, CollectionCardCount - first);
+            int cardsOnPage = Mathf.Min(reservePageSize, reserveCards.Length - first);
             int rows = Mathf.Max(1, (cardsOnPage + CardColumns - 1) / CardColumns);
             float rowsHeight = ReserveRowsHeight(rows) * reserveCardScale;
             float top = (reserveGrid.rect.height - rowsHeight) * .5f;
             for (int i = 0; i < reserveCards.Length; i++)
                 LayoutReserveCard(reserveCards[i], i - first, top);
-            for (int i = 0; i < collectionDemoCards.Length; i++)
-                LayoutReserveCard(collectionDemoCards[i], reserveCards.Length + i - first, top);
-
             int pages = ReservePageCount;
             bool browsing = pendingTroop == null;
             reservePaging.gameObject.SetActive(pages > 1);
