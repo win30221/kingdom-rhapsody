@@ -519,21 +519,21 @@ namespace KingdomRhapsody
             tile.Cost.text = isNext ? "下一張" : card.Cost.ToString();
             tile.Button.tooltip = card.Action;
             Image(tile.Frame, cardArt, ScaleMode.StretchToFill);
-            Image(tile.Image, Portrait(card));
+            Sprite portrait = Portrait(card);
+            Image(tile.Image, portrait);
             tile.Image.generateVisualContent -= SpellArtwork;
             tile.Image.userData = card;
-            if (card.IsSpell)
+            if (card.IsSpell && portrait == null)
                 tile.Image.generateVisualContent += SpellArtwork;
             tile.Image.MarkDirtyRepaint();
         }
 
         private Sprite Portrait(BattleCard card)
         {
-            if (card.IsSpell)
-                return null;
             if (!portraits.TryGetValue(card.Id, out Sprite sprite))
             {
-                sprite = Get("illustrations/characters/" + card.Id) ?? Get("card-portraits/" + card.Id) ??
+                sprite = card.IsSpell ? Get("illustrations/spells/" + card.Id) :
+                    Get("illustrations/characters/" + card.Id) ?? Get("card-portraits/" + card.Id) ??
                     Get("portraits/troops/" + card.Id);
                 portraits.Add(card.Id, sprite);
             }

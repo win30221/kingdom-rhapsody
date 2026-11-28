@@ -28,12 +28,13 @@ namespace KingdomRhapsody
         private const float CardColumnGap = 18f;
         private const float CardRowGap = 22f;
         private const float CardGridX = 111f;
-        private const float ReservePanelY = 728f;
+        private const float ReservePanelY = 697f;
         private const float ReserveViewportX = 101f;
-        private const float ReserveViewportY = 808f;
-        private const float ReserveBottomInset = 38f;
+        private const float ReserveViewportY = 771f;
+        private const float ReserveBottomInset = 30f;
         private const float ReserveGridPadding = 12f;
         private const float ReserveViewportWidth = 798f;
+        private const float ReserveMinCardScale = .85f;
         // Formation-local coordinates keep the three characters on a shared ground line.
         private static readonly Rect LeftPosition = new Rect(77, 125, 306, 520);
         private static readonly Rect RightPosition = new Rect(625, 125, 300, 520);
@@ -53,6 +54,7 @@ namespace KingdomRhapsody
             internal RectTransform Visual;
             internal CanvasGroup VisualGroup;
             internal Outline Glow;
+            internal int NameSize;
         }
 
         private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
@@ -79,12 +81,15 @@ namespace KingdomRhapsody
         private RectTransform deckMiddle;
         private RectTransform deckFooter;
         private RectTransform reservePanelRect;
-        private RectTransform reserveScrollRoot;
-        private RectTransform reserveViewport;
         private RectTransform reserveGrid;
-        private ScrollRect reserveScroll;
+        private RectTransform reservePaging;
+        private Button reservePrevious;
+        private Button reserveNext;
+        private Text reservePageNumber;
         private Text reserveEmpty;
-        private GameObject lastDeckFocus;
+        private int reservePage;
+        private int reservePageSize = CardColumns;
+        private float reserveCardScale = 1f;
         private RectTransform guardDialog;
         private RectTransform soundDialog;
         private RectTransform activeDialog;
@@ -101,9 +106,11 @@ namespace KingdomRhapsody
         private Button cancelReplace;
         private RectTransform troopDetail;
         private Image detailPortrait;
+        private Image detailShadow;
         private Text detailName;
         private Text detailStatus;
         private Text detailAction;
+        private Text detailCost;
         private Button detailBack;
         private Button detailAdd;
         private string detailTroop;
@@ -125,6 +132,7 @@ namespace KingdomRhapsody
         [SerializeField, Range(0, 100)] private int collectionDemoCount = 21;
         private Card[] collectionDemoCards = Array.Empty<Card>();
         private int CollectionCardCount => reserveCards.Length + collectionDemoCards.Length;
+        private int ReservePageCount => Mathf.Max(1, (CollectionCardCount + reservePageSize - 1) / reservePageSize);
         private string[] reserveIds;
         private Text guardTitle;
         private Text soundState;
@@ -314,12 +322,11 @@ namespace KingdomRhapsody
                     () => SelectDeckSlot(slot), Cue.Tap);
             }
 
-            // The roster uses the same four-column grid as the active deck.
-            // Only the collection scrolls; the eight deployment slots stay in place.
+            // The collection shares the active deck's four column centers.
             reservePanelRect = Picture(deckContent, "ReservesPanel", "frames/stone-panel",
                 new Rect(65, ReservePanelY, 870, 490), true).rectTransform;
-            Header(deckContent, "ReservesHeader", "卡牌收藏", new Rect(287, 697, 426, 103));
-            BuildReserveScroll();
+            Header(deckContent, "ReservesHeader", "卡牌收藏", new Rect(287, 665, 426, 103));
+            BuildReserveCollection();
             deckFooter = DesignGroup(deck, "Footer", new Vector2(.5f, 0f), DeckIdleFooterHeight);
             replaceBar = Box(deckFooter, "ReplacePrompt", new Rect(50, 0, 900, 140));
             replaceHint = Label(replaceBar, "Hint", "", new Rect(0, 0, 620, 132), 38, Ivory);
@@ -353,31 +360,23 @@ namespace KingdomRhapsody
                 y + index / CardColumns * (TroopCardHeight + CardRowGap), TroopCardWidth, TroopCardHeight);
         }
 
-        private void BuildReserveScroll()
+        private void BuildReserveCollection()
         {
-            reserveScrollRoot = Box(deckContent, "ReserveScroll",
+            reserveGrid = Box(deckContent, "CollectionGrid",
                 new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth, TroopCardHeight + 24f));
-            reserveScroll = reserveScrollRoot.gameObject.AddComponent<ScrollRect>();
-            reserveScroll.horizontal = false;
-            reserveScroll.vertical = true;
-            reserveScroll.movementType = ScrollRect.MovementType.Clamped;
-            reserveScroll.inertia = true;
-            reserveScroll.scrollSensitivity = 90f;
-
-            reserveViewport = Box(reserveScrollRoot, "Viewport",
-                new Rect(0, 0, ReserveViewportWidth, TroopCardHeight + 24f));
-            var touchArea = reserveViewport.gameObject.AddComponent<Image>();
+            var touchArea = reserveGrid.gameObject.AddComponent<Image>();
             touchArea.color = Color.clear;
             touchArea.raycastTarget = true;
-            reserveViewport.gameObject.AddComponent<RectMask2D>();
-            reserveGrid = Box(reserveViewport, "CollectionGrid",
-                new Rect(0, 0, ReserveViewportWidth, TroopCardHeight + 24f));
-            reserveScroll.viewport = reserveViewport;
-            reserveScroll.content = reserveGrid;
 
-            // Scroll by touch, drag or mouse wheel without a visible scrollbar.
+            reservePaging = Box(deckContent, "CollectionPages", new Rect(101, 698, ReserveViewportWidth, 64));
+            reservePrevious = IconButton(reservePaging, "PreviousPage", "back", new Rect(37, 0, 64, 64),
+                () => TurnReservePage(-1), Cue.Tap);
+            reserveNext = IconButton(reservePaging, "NextPage", "back", new Rect(696, 0, 64, 64),
+                () => TurnReservePage(1), Cue.Tap, mirror: true);
+            reservePageNumber = Label(reservePaging, "PageNumber", "", new Rect(610, 0, 82, 64), 28, Ivory);
 
-            // All reserves are populated from the roster, not a hard-coded row count.
+            BindReservePageInput();
+
             reserveCards = new Card[Mathf.Max(0, Roster.Troops.Length - Roster.DeckSize)];
             for (int i = 0; i < reserveCards.Length; i++)
             {
@@ -387,9 +386,51 @@ namespace KingdomRhapsody
                     () => SelectReserve(slot), Cue.Tap);
             }
             BuildCollectionDemoCards();
-            reserveEmpty = Label(reserveViewport, "EmptyCollection", "沒有未上陣的卡牌",
+            reserveEmpty = Label(reserveGrid, "EmptyCollection", "沒有未上陣的卡牌",
                 new Rect(0, 0, ReserveViewportWidth, TroopCardHeight), 36, Ivory);
             reserveEmpty.gameObject.SetActive(CollectionCardCount == 0);
+        }
+
+        private void BindReservePageInput()
+        {
+            var trigger = reserveGrid.gameObject.AddComponent<EventTrigger>();
+            var scroll = new EventTrigger.Entry { eventID = EventTriggerType.Scroll };
+            scroll.callback.AddListener(data =>
+            {
+                float delta = ((PointerEventData)data).scrollDelta.y;
+                if (delta != 0f)
+                    TurnReservePage(delta > 0f ? -1 : 1);
+            });
+            trigger.triggers.Add(scroll);
+
+            var swipe = new EventTrigger.Entry { eventID = EventTriggerType.EndDrag };
+            swipe.callback.AddListener(data =>
+            {
+                var pointer = (PointerEventData)data;
+                Vector2 delta = pointer.position - pointer.pressPosition;
+                float direction = Mathf.Abs(delta.x) > Mathf.Abs(delta.y) ? -delta.x : delta.y;
+                float threshold = Mathf.Max(18f, 46f * canvas.scaleFactor * viewport.localScale.x);
+                if (Mathf.Abs(direction) >= threshold)
+                    TurnReservePage(direction > 0f ? 1 : -1);
+            });
+            trigger.triggers.Add(swipe);
+        }
+
+        private void TurnReservePage(int direction)
+        {
+            if (pendingTroop != null || cardActionLayer.gameObject.activeSelf || activeDialog != null)
+                return;
+            int page = Mathf.Clamp(reservePage + direction, 0, ReservePageCount - 1);
+            if (page == reservePage)
+                return;
+            reservePage = page;
+            LayoutReservePage();
+
+            GameObject focused = EventSystem.current?.currentSelectedGameObject;
+            if (focused == reservePrevious.gameObject && !reservePrevious.interactable)
+                Focus(reserveNext);
+            else if (focused == reserveNext.gameObject && !reserveNext.interactable)
+                Focus(reservePrevious);
         }
 
         private void BuildCollectionDemoCards()
@@ -407,7 +448,7 @@ namespace KingdomRhapsody
                 Card card = MakeCard(reserveGrid, "CollectionDemo" + (i + 1),
                     TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, ReserveGridPadding),
                     31, () => { }, Cue.Silent);
-                SetCard(card, "portraits/troops/" + troop.Id, troop.Name, "card-gold", false, fullBody: true);
+                SetCard(card, TroopPortrait(troop.Id), troop.Name, "card-gold", false);
                 var colors = card.Button.colors;
                 colors.disabledColor = Color.white;
                 card.Button.colors = colors;
@@ -438,17 +479,26 @@ namespace KingdomRhapsody
             card.Glow.effectDistance = new Vector2(4f, -4f);
             card.Glow.effectColor = new Color(1f, .75f, .18f, .8f);
             card.Glow.enabled = false;
-            card.Label = Label(art, "Name", "", new Rect(rect.width * .095f, rect.height * .77f,
-                rect.width * .81f, rect.height * .17f), size, Ivory);
+            card.Label = Label(art, "Name", "", new Rect(rect.width * .12f, rect.height * .77f,
+                rect.width * .76f, rect.height * .17f), size, Ivory);
+            card.NameSize = size;
             card.Check = Picture(art, "Check", "icons/check", new Rect(rect.width * .725f, rect.height * .10f,
                 rect.width * .16f, rect.width * .13f));
             return card;
         }
 
-        private void SetCard(Card card, string art, string name, string frame, bool check, bool fullBody = false)
+        private void SetCard(Card card, Sprite art, string name, string frame, bool check)
         {
-            Fit(card.Portrait, CardPortrait(art, fullBody), card.PortraitBounds);
-            card.Label.text = name;
+            Fit(card.Portrait, art, card.PortraitBounds);
+            if (card.Label.text != name)
+            {
+                SetLabelValue(card.Label, name);
+                card.Label.fontSize = card.NameSize;
+                float width = card.Label.rectTransform.rect.width - 4f;
+                float preferredWidth = card.Label.preferredWidth;
+                if (width > 0f && preferredWidth > width)
+                    card.Label.fontSize = Mathf.Max(1, Mathf.FloorToInt(card.NameSize * width / preferredWidth));
+            }
             card.Frame.sprite = Sprite("frames/" + frame);
             card.Check.gameObject.SetActive(check);
         }
@@ -487,15 +537,15 @@ namespace KingdomRhapsody
 
         private void BuildTroopDetail()
         {
-            troopDetail = Dialog("TroopDetail", "兵種資訊", new Rect(75, 220, 850, 1128), out _);
+            troopDetail = Dialog("TroopDetail", "卡牌資訊", new Rect(75, 220, 850, 1128), out _);
             Picture(troopDetail, "CharacterStage", "frames/card-field", new Rect(55, 93, 740, 532)).color =
                 new Color32(28, 44, 75, 255);
-            Picture(troopDetail, "StageShadow", "frames/ground-shadow", new Rect(262, 568, 326, 48));
+            detailShadow = Picture(troopDetail, "StageShadow", "frames/ground-shadow", new Rect(262, 568, 326, 48));
             detailPortrait = Picture(troopDetail, "DetailPortrait", null, new Rect(98, 109, 654, 480));
             detailName = Label(troopDetail, "TroopName", "", new Rect(48, 635, 754, 80), 60, Gold);
             detailStatus = Label(troopDetail, "TroopStatus", "", new Rect(48, 710, 754, 60), 36, Ivory);
             detailAction = Label(troopDetail, "RepresentativeAction", "", new Rect(52, 792, 746, 78), 40, Ivory);
-            Label(troopDetail, "StatsPending", "戰鬥數值尚未設定", new Rect(52, 874, 746, 55), 32,
+            detailCost = Label(troopDetail, "CardCost", "", new Rect(52, 874, 746, 55), 32,
                 new Color32(177, 198, 226, 255));
             detailBack = TextButton(troopDetail, "DetailBack", "返回", "buttons/secondary-blue",
                 new Rect(78, 976, 330, 112), 46, Gold, CloseDialog, Cue.Back, out _);
@@ -579,7 +629,7 @@ namespace KingdomRhapsody
             {
                 var guard = (RoyalGuard)i;
                 bool selected = chosen == guard;
-                SetCard(guardOptions[i], "portraits/" + Roster.SpriteId(guard), Roster.Name(guard),
+                SetCard(guardOptions[i], CardPortrait("portraits/" + Roster.SpriteId(guard)), Roster.Name(guard),
                     selected ? "card-gold-selected" : "card-steel", selected);
             }
             OpenDialog(guardDialog, guardOptions[(int)chosen].Button);
@@ -601,10 +651,8 @@ namespace KingdomRhapsody
             CloseCardActions();
             pendingTroop = null;
             flashSlot = -1;
+            reservePage = 0;
             RefreshDeck();
-            reserveScroll.StopMovement();
-            SetReserveOffset(0f);
-            lastDeckFocus = null;
         }
 
         private void RefreshDeck()
@@ -615,17 +663,17 @@ namespace KingdomRhapsody
             {
                 Card card = deckCards[i];
                 string id = loadout.deck[i];
-                SetCard(card, "portraits/troops/" + id, Roster.Name(id),
+                SetCard(card, TroopPortrait(id), Roster.Name(id),
                     replacing ? "card-gold-selected" : card == selectedCard ? "card-cyan-selected" : "card-gold",
-                    false, fullBody: true);
+                    false);
             }
             for (int i = 0; i < reserveCards.Length; i++)
             {
                 Card card = reserveCards[i];
                 string id = reserveIds[i];
                 bool selected = replacing ? id == pendingTroop : card == selectedCard;
-                SetCard(card, "portraits/troops/" + id, Roster.Name(id),
-                    selected ? "card-cyan-selected" : "card-gold", false, fullBody: true);
+                SetCard(card, TroopPortrait(id), Roster.Name(id),
+                    selected ? "card-cyan-selected" : "card-gold", false);
                 card.VisualGroup.alpha = replacing && !selected ? .42f : 1f;
                 card.Button.interactable = !replacing;
             }
@@ -672,7 +720,6 @@ namespace KingdomRhapsody
         private void OpenCardActions(Card card, string id)
         {
             CloseCardActions();
-            reserveScroll.StopMovement();
             selectedCard = card;
             selectedTroop = id;
             addCard.gameObject.SetActive(IsReserve(id));
@@ -754,7 +801,11 @@ namespace KingdomRhapsody
             RefreshDeck();
             int index = Array.IndexOf(reserveIds, id);
             if (index >= 0)
+            {
+                reservePage = index / reservePageSize;
+                LayoutReservePage();
                 Focus(reserveCards[index].Button);
+            }
         }
 
         private void UpdateDeckEffects()
@@ -792,10 +843,13 @@ namespace KingdomRhapsody
 
             detailTroop = id;
             bool reserve = IsReserve(id);
-            Fit(detailPortrait, CardPortrait("portraits/troops/" + id, true), new Rect(98, 109, 654, 480), true);
+            BattleCard card = BattleCatalog.Find(id);
+            detailShadow.enabled = !card.IsSpell;
+            Fit(detailPortrait, TroopPortrait(id), new Rect(98, 109, 654, 480), bottom: !card.IsSpell);
             SetLabelValue(detailName, Roster.Name(id));
             SetLabelValue(detailStatus, reserve ? "未上陣" : "已上陣");
-            SetLabelValue(detailAction, "代表動作：" + Roster.ActionName(id));
+            SetLabelValue(detailAction, (card.IsSpell ? "法術：" : "代表動作：") + Roster.ActionName(id));
+            SetLabelValue(detailCost, $"能量 {card.Cost} 點");
             detailAdd.gameObject.SetActive(reserve);
             Position((RectTransform)detailBack.transform,
                 reserve ? new Rect(78, 976, 330, 112) : new Rect(260, 976, 330, 112));
@@ -912,7 +966,6 @@ namespace KingdomRhapsody
                 overlay.alpha = Mathf.MoveTowards(overlay.alpha, 1f, Time.unscaledDeltaTime * 9f);
             if (deck.gameObject.activeSelf)
             {
-                FollowReserveFocus();
                 LayoutCardActions();
                 UpdateDeckEffects();
             }
@@ -973,8 +1026,7 @@ namespace KingdomRhapsody
 
         private void LayoutDeckRegions()
         {
-            // The active cards never move when the cancel row appears. The
-            // collection viewport absorbs the height change instead.
+            // Keep the active deck in place when the replacement controls appear.
             bool replacing = pendingTroop != null;
             float footerHeight = replacing ? DeckReplaceFooterHeight : DeckIdleFooterHeight;
             deckMiddle.offsetMin = new Vector2(0f, footerHeight);
@@ -986,78 +1038,55 @@ namespace KingdomRhapsody
             Position(reservePanelRect, new Rect(65, ReservePanelY, 870, Mathf.Max(1f, height - ReservePanelY)));
 
             float viewHeight = Mathf.Max(1f, height - ReserveViewportY - ReserveBottomInset);
-            Position(reserveScrollRoot, new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth, viewHeight));
-            Position(reserveViewport, new Rect(0, 0, ReserveViewportWidth, viewHeight));
-
-            int rows = (CollectionCardCount + CardColumns - 1) / CardColumns;
-            float cardsHeight = rows == 0 ? 0f : rows * TroopCardHeight + (rows - 1) * CardRowGap;
-            float naturalHeight = cardsHeight + 2f * ReserveGridPadding;
-            float contentHeight = Mathf.Max(viewHeight, naturalHeight);
-            float previousOffset = reserveGrid.anchoredPosition.y;
-            reserveGrid.sizeDelta = new Vector2(ReserveViewportWidth, contentHeight);
-
-            // A short list is vertically centered but retains the same left-aligned
-            // column positions; additional rows scroll without shrinking the tiles.
-            float firstRowY = Mathf.Max(ReserveGridPadding, (viewHeight - cardsHeight) * .5f);
-            for (int i = 0; i < reserveCards.Length; i++)
-                Position((RectTransform)reserveCards[i].Button.transform,
-                    TroopCardRect(i, CardGridX - ReserveViewportX, firstRowY));
-            for (int i = 0; i < collectionDemoCards.Length; i++)
-                Position((RectTransform)collectionDemoCards[i].Button.transform,
-                    TroopCardRect(reserveCards.Length + i, CardGridX - ReserveViewportX, firstRowY));
+            Position(reserveGrid, new Rect(ReserveViewportX, ReserveViewportY, ReserveViewportWidth, viewHeight));
             Position(reserveEmpty.rectTransform, new Rect(0, 0, ReserveViewportWidth, viewHeight));
 
-            bool overflow = naturalHeight > viewHeight + .5f && rows > 0;
-            reserveScroll.vertical = overflow && !replacing;
-            if (!overflow || replacing)
-                reserveScroll.StopMovement();
-            SetReserveOffset(previousOffset);
-
             int selectedIndex = replacing ? Array.IndexOf(reserveIds, pendingTroop) : Array.IndexOf(reserveCards, selectedCard);
-            if (selectedIndex >= 0)
-                EnsureReserveVisible(selectedIndex);
+            int anchorIndex = selectedIndex >= 0 ? selectedIndex : reservePage * reservePageSize;
+            int totalRows = Mathf.Max(1, (CollectionCardCount + CardColumns - 1) / CardColumns);
+            float cardSpace = Mathf.Max(1f, viewHeight - 2f * ReserveGridPadding);
+            int rowsThatFit = Mathf.FloorToInt((cardSpace / ReserveMinCardScale + CardRowGap) / (TroopCardHeight + CardRowGap));
+            int rowsPerPage = Mathf.Clamp(rowsThatFit, 1, totalRows);
+            reservePageSize = rowsPerPage * CardColumns;
+            reserveCardScale = Mathf.Min(1f, cardSpace / ReserveRowsHeight(rowsPerPage));
+            reservePage = Mathf.Clamp(anchorIndex / reservePageSize, 0, ReservePageCount - 1);
+            LayoutReservePage();
         }
 
-        private void SetReserveOffset(float y)
-        {
-            float maxOffset = Mathf.Max(0f, reserveGrid.rect.height - reserveViewport.rect.height);
-            reserveGrid.anchoredPosition = new Vector2(0f, Mathf.Clamp(y, 0f, maxOffset));
-        }
+        private static float ReserveRowsHeight(int rows) => rows * TroopCardHeight + (rows - 1) * CardRowGap;
 
-        private void EnsureReserveVisible(int index)
+        private void LayoutReservePage()
         {
-            if (index < 0 || index >= reserveCards.Length)
-                return;
-            var tile = (RectTransform)reserveCards[index].Button.transform;
-            float top = -tile.anchoredPosition.y;
-            float bottom = top + tile.rect.height;
-            float offset = reserveGrid.anchoredPosition.y;
-            float viewHeight = reserveViewport.rect.height;
-            if (top < offset + ReserveGridPadding)
-                SetReserveOffset(top - ReserveGridPadding);
-            else if (bottom > offset + viewHeight - ReserveGridPadding)
-                SetReserveOffset(bottom + ReserveGridPadding - viewHeight);
-        }
-
-        private void FollowReserveFocus()
-        {
-            // Keep keyboard/controller navigation visible without fighting drag or
-            // mouse-wheel scrolling when the currently focused tile has not changed.
-            GameObject current = EventSystem.current?.currentSelectedGameObject;
-            if (current == lastDeckFocus)
-                return;
-            lastDeckFocus = current;
-            if (current == null || pendingTroop != null || cardActionLayer.gameObject.activeSelf ||
-                activeDialog != null || Input.GetMouseButton(0) || Input.touchCount > 0)
-                return;
+            int first = reservePage * reservePageSize;
+            int cardsOnPage = Mathf.Min(reservePageSize, CollectionCardCount - first);
+            int rows = Mathf.Max(1, (cardsOnPage + CardColumns - 1) / CardColumns);
+            float rowsHeight = ReserveRowsHeight(rows) * reserveCardScale;
+            float top = (reserveGrid.rect.height - rowsHeight) * .5f;
             for (int i = 0; i < reserveCards.Length; i++)
-            {
-                if (reserveCards[i].Button.gameObject != current)
-                    continue;
-                reserveScroll.StopMovement();
-                EnsureReserveVisible(i);
-                break;
-            }
+                LayoutReserveCard(reserveCards[i], i - first, top);
+            for (int i = 0; i < collectionDemoCards.Length; i++)
+                LayoutReserveCard(collectionDemoCards[i], reserveCards.Length + i - first, top);
+
+            int pages = ReservePageCount;
+            bool browsing = pendingTroop == null;
+            reservePaging.gameObject.SetActive(pages > 1);
+            reservePrevious.interactable = browsing && reservePage > 0;
+            reserveNext.interactable = browsing && reservePage + 1 < pages;
+            reservePageNumber.text = (reservePage + 1) + " / " + pages;
+        }
+
+        private void LayoutReserveCard(Card card, int slot, float top)
+        {
+            var tile = (RectTransform)card.Button.transform;
+            bool visible = slot >= 0 && slot < reservePageSize;
+            tile.gameObject.SetActive(visible);
+            if (!visible)
+                return;
+            float x = CardGridX - ReserveViewportX + (1f - reserveCardScale) * TroopCardWidth * .5f;
+            Rect rect = TroopCardRect(slot, x, 0f);
+            rect.y = top + rect.y * reserveCardScale;
+            Position(tile, rect);
+            tile.localScale = Vector3.one * reserveCardScale;
         }
 
         private static Rect VisibleArtworkSafeArea(Vector2Int screen, Rect safe, Sprite art)
@@ -1106,6 +1135,10 @@ namespace KingdomRhapsody
             }
             return Sprite("card-portraits/" + id) ?? Sprite(legacyPath);
         }
+
+        private Sprite TroopPortrait(string id) => BattleCatalog.Find(id)?.IsSpell == true
+            ? Sprite("illustrations/spells/" + id)
+            : CardPortrait("portraits/troops/" + id, true);
 
         private Sprite Sprite(string id)
         {
@@ -1192,6 +1225,7 @@ namespace KingdomRhapsody
         private static void Fit(Image image, Sprite art, Rect bounds, bool bottom = false, bool mirror = false)
         {
             image.sprite = art;
+            image.enabled = art != null;
             if (art == null)
                 return;
             float factor = Mathf.Min(bounds.width / art.rect.width, bounds.height / art.rect.height);
@@ -1327,12 +1361,16 @@ namespace KingdomRhapsody
         }
 
         private Button IconButton(Transform parent, string name, string icon, Rect rect, Action click, Cue cue,
-            float opticalOffsetX = 0f)
+            float opticalOffsetX = 0f, bool mirror = false)
         {
             Button button = MakeButton(parent, name, "buttons/icon-button", rect, click, cue,
                 out RectTransform art, out _);
-            Picture(art, "Icon", "icons/" + icon, new Rect(rect.width * (.23f + opticalOffsetX), rect.height * .22f,
-                rect.width * .54f, rect.height * .54f)).preserveAspect = true;
+            var bounds = new Rect(rect.width * (.23f + opticalOffsetX), rect.height * .22f,
+                rect.width * .54f, rect.height * .54f);
+            Image iconImage = Picture(art, "Icon", "icons/" + icon, bounds);
+            iconImage.preserveAspect = true;
+            if (mirror)
+                Fit(iconImage, iconImage.sprite, bounds, mirror: true);
             return button;
         }
 
