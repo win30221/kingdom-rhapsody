@@ -35,7 +35,7 @@ namespace KingdomRhapsody
         internal readonly Vector2 Home;
         internal readonly float LaneX;
         internal readonly bool IsPrince;
-        internal Vector2 Position, Heading;
+        internal Vector2 Position, Heading, StepDisplacement;
         internal float Health, Shield, PatrolDistance;
         internal int NextAction, ActionContact, ActionEnd, PoseTick, PoseLength, StatusEnd;
         internal int SlowEnd, PoisonEnd, PoisonNext, StunEnd, StunImmuneEnd, ShieldReady, SuccessfulHits;
@@ -67,8 +67,6 @@ namespace KingdomRhapsody
             Pose = pose;
             PoseTick = tick;
             PoseLength = length;
-            if (pose == BattlePose.Walk)
-                WalkPhase = 0;
         }
     }
 
@@ -344,8 +342,14 @@ namespace KingdomRhapsody
                 if (unit.Alive)
                     StepStatus(unit);
             foreach (BattleUnit unit in units)
-                if (unit.Alive)
-                    StepUnit(unit);
+            {
+                if (!unit.Alive)
+                    continue;
+                Vector2 before = unit.Position;
+                StepUnit(unit);
+                // Predict from the unit's own movement before bodies are separated.
+                unit.StepDisplacement = unit.Position - before;
+            }
 
             ResolveBodies();
             // Collect this tick's valid contacts before applying any damage or control.
@@ -459,10 +463,16 @@ namespace KingdomRhapsody
             {
                 Face(unit, targetUnit.Position);
                 if (Tick >= unit.NextAction)
-                    StartAction(unit, targetUnit);
-                else
+                {
+                    if (TryStartAction(unit, targetUnit))
+                        return;
+                }
+                else if (!unit.Card.IsMelee ||
+                    Vector2.Dot(targetUnit.StepDisplacement, targetUnit.Position - unit.Position) <= 0)
+                {
                     unit.SetPose(BattlePose.Idle, Tick);
-                return;
+                    return;
+                }
             }
 
             if (targetUnit == null && unit.Card.Skill == Skill.Heal)
@@ -476,7 +486,9 @@ namespace KingdomRhapsody
             }
 
             Vector2 goal = targetUnit?.Position ?? AdvanceGoal(unit);
-            Move(unit, goal);
+            float stopDistance = targetUnit != null && unit.Card.IsMelee
+                ? unit.Card.Radius + targetUnit.Card.Radius : 0;
+            Move(unit, goal, stopDistance);
         }
 
         private static void Face(BattleUnit unit, Vector2 target)
@@ -486,11 +498,11 @@ namespace KingdomRhapsody
                 unit.Heading = Vector2.Normalize(direction);
         }
 
-        private void Move(BattleUnit unit, Vector2 goal)
+        private void Move(BattleUnit unit, Vector2 goal, float stopDistance = 0)
         {
             Vector2 delta = goal - unit.Position;
             float distance = delta.Length();
-            float step = Math.Min(distance, unit.Card.Speed * SlowFactor(unit) / TickRate);
+            float step = Math.Min(distance - stopDistance, unit.Card.Speed * SlowFactor(unit) / TickRate);
             if (step <= .0001f)
             {
                 unit.SetPose(BattlePose.Idle, Tick);
@@ -571,21 +583,25 @@ namespace KingdomRhapsody
             target.Alive && InAttackRange(attacker, target) &&
             (attacker.GuardSide < 0 || CanGuardEngage(attacker, target));
 
-        private static bool InAttackRange(BattleUnit attacker, BattleUnit target)
+        private static bool InAttackRange(BattleUnit attacker, BattleUnit target) =>
+            InAttackRange(attacker, target, target.Position);
+
+        private static bool InAttackRange(BattleUnit attacker, BattleUnit target, Vector2 targetPosition)
         {
             if (attacker.Card.Skill == Skill.Rally)
-                return Within(attacker.Position, target.Position, RallyRadius);
-            if (ContactDistance(attacker, target) > attacker.Card.Range + .001f)
+                return Within(attacker.Position, targetPosition, RallyRadius);
+            float reach = attacker.Card.Range + attacker.Card.Radius + target.Card.Radius + .001f;
+            if (!Within(attacker.Position, targetPosition, reach))
                 return false;
             return attacker.Card.Skill switch
             {
-                Skill.Hammer => Within(attacker.Position, target.Position, 1.8f + target.Card.Radius),
-                Skill.Axe => Within(attacker.Position, target.Position, 1.5f + target.Card.Radius),
+                Skill.Hammer => Within(attacker.Position, targetPosition, 1.8f + target.Card.Radius),
+                Skill.Axe => Within(attacker.Position, targetPosition, 1.5f + target.Card.Radius),
                 _ => true
             };
         }
 
-        private void StartAction(BattleUnit unit, BattleUnit target)
+        private bool TryStartAction(BattleUnit unit, BattleUnit target)
         {
             float speed = HasRally(unit) ? 1.15f : 1;
             int interval = Math.Max(2, ToTicks(unit.Card.Interval / speed));
@@ -594,11 +610,16 @@ namespace KingdomRhapsody
             ActionTiming timing = getTiming(unit.Card.Id, pose);
             int duration = Math.Min(timing.DurationTicks, interval);
             int contact = timing.CueTick(duration);
+            // Targets processed later in this tick can move once more before the cue.
+            if (unit.Card.IsMelee &&
+                !InAttackRange(unit, target, target.Position + target.StepDisplacement * (contact + 1)))
+                return false;
             unit.LockedTarget = target;
             unit.ActionContact = Tick + contact;
             unit.ActionEnd = Tick + duration;
             unit.NextAction = Tick + interval;
             unit.SetPose(pose, Tick, duration);
+            return true;
         }
 
         private bool HasRally(BattleUnit unit)
@@ -916,8 +937,6 @@ namespace KingdomRhapsody
         }
 
         private static bool Within(Vector2 a, Vector2 b, float range) => Vector2.DistanceSquared(a, b) <= range * range;
-        private static float ContactDistance(BattleUnit a, BattleUnit b) =>
-            Math.Max(0, Vector2.Distance(a.Position, b.Position) - a.Card.Radius - b.Card.Radius);
         private float SlowFactor(BattleUnit unit) => Tick < unit.SlowEnd ? .75f : 1;
         private static int ToTicks(float seconds) => (int)Math.Ceiling(seconds * TickRate);
         private static Vector2 Constrain(BattleUnit unit, Vector2 point)

@@ -30,6 +30,8 @@ internal static class Program
         Run("bat awakens below half health and heals on hit", BatAwakening);
         Run("shield break and awakening still play while stunned", SimultaneousStatus);
         Run("footman and shieldman catch a patrolling prince", ChasePrince);
+        Run("melee pursuit closes the gap before winding up and resumes its walk", MeleePursuit);
+        Run("a prince who sprints after windup can dodge the hit", SprintDodgesMelee);
         Run("GameNetKit presents movement and removes defeated units", Presentation);
         Run("paired seats own independent decks, guards and commands", PairedSeats);
         Run("a forfeit can be received on the latest simulation tick", SameTickForfeit);
@@ -327,6 +329,64 @@ internal static class Program
             StepTo(match, 55 * BattleMatch.TickRate);
             Check(match.Prince(1).Health < 6000);
         }
+    }
+
+    private static (BattleMatch Match, BattleUnit Unit, BattleUnit Prince) AtPrinceRange(string card, float margin)
+    {
+        var match = Create(card);
+        foreach (BattleUnit guard in match.Units.Where(unit => unit.GuardSide >= 0))
+            guard.Health = 0;
+        BattleUnit unit = Deploy(match, 0, 0, 8, 21), prince = match.Prince(1);
+        float reach = unit.Card.Range + unit.Card.Radius + prince.Card.Radius;
+        unit.Position = prince.Position + (reach - margin) * Vector2.UnitX;
+        return (match, unit, prince);
+    }
+
+    private static void MeleePursuit()
+    {
+        foreach (string card in new[] { "footman", "shieldman" })
+        {
+            var (match, unit, prince) = AtPrinceRange(card, .08f);
+            match.Step();
+            Check(unit.Pose == BattlePose.Walk);
+            bool resumed = false;
+            int end = match.Tick + 3 * BattleMatch.TickRate - 1;
+            while (match.Tick < end)
+            {
+                BattlePose before = unit.Pose;
+                Vector2 position = unit.Position;
+                float walkPhase = unit.WalkPhase, health = prince.Health;
+                bool contact = unit.LockedTarget == prince && match.Tick + 1 == unit.ActionContact;
+                match.Step();
+                Check(unit.Pose == BattlePose.Walk || unit.Pose == BattlePose.Action);
+                if (unit.Pose == BattlePose.Action)
+                    Check(position == unit.Position);
+                else if (before == BattlePose.Action)
+                {
+                    Check(unit.WalkPhase > walkPhase);
+                    resumed = true;
+                }
+                if (contact)
+                    Check(prince.Health < health);
+            }
+            Check(resumed && unit.SuccessfulHits > 0);
+        }
+    }
+
+    private static void SprintDodgesMelee()
+    {
+        var (match, unit, prince) = AtPrinceRange("footman", .65f);
+        match.Step();
+        Check(unit.Pose == BattlePose.Action && unit.LockedTarget == prince && match.TrySprint(1));
+        int start = unit.PoseTick, end = unit.ActionEnd, ready = unit.NextAction;
+        float health = prince.Health;
+        while (match.Tick + 1 < end)
+        {
+            match.Step();
+            Check(unit.Pose == BattlePose.Action && unit.PoseTick == start && prince.Health == health);
+        }
+        match.Step();
+        Check(unit.Pose == BattlePose.Walk && unit.NextAction == ready && unit.SuccessfulHits == 0);
     }
 
     private static void Presentation()

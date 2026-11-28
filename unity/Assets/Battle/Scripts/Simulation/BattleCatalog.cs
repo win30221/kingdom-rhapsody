@@ -17,6 +17,7 @@ namespace KingdomRhapsody
         internal readonly Skill Skill;
         internal bool IsSpell => Health == 0;
         internal bool IsSupport => Skill == Skill.Rally || Skill == Skill.Heal;
+        internal bool IsMelee => !IsSpell && !IsSupport && Power > 0 && FlightTicks == 0;
 
         internal BattleCard(string id, string name, string action, int cost, float health, float power,
             float interval, float range, float speed, Skill skill = Skill.Strike, float radius = .33f, int flightTicks = 0)
