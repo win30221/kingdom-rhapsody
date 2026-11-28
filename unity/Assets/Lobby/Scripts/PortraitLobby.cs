@@ -56,6 +56,7 @@ namespace KingdomRhapsody
         }
 
         private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
+        private readonly Dictionary<string, AudioClip> battleSounds = new Dictionary<string, AudioClip>();
         private LobbyLoadout loadout;
         private AudioSource audioSource;
         private AudioClip[] clips;
@@ -852,7 +853,21 @@ namespace KingdomRhapsody
 
         private void PlayBattleCue(string cue)
         {
-            Play(cue == "deploy" ? Cue.Deploy : cue == "confirm" ? Cue.Confirm : Cue.Tap);
+            if (!loadout.soundEnabled)
+                return;
+            switch (cue)
+            {
+                case "tap": Play(Cue.Tap); return;
+                case "confirm": Play(Cue.Confirm); return;
+                case "deploy": Play(Cue.Deploy); return;
+            }
+            if (!battleSounds.TryGetValue(cue, out AudioClip clip))
+            {
+                clip = Resources.Load<AudioClip>("Battle/Sounds/" + cue);
+                battleSounds.Add(cue, clip);
+            }
+            if (clip)
+                audioSource.PlayOneShot(clip, .65f);
         }
 
         private void OpenDialog(RectTransform panel, Button start)

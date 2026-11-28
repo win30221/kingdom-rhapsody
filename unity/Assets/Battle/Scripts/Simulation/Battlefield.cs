@@ -23,6 +23,13 @@ namespace KingdomRhapsody
         internal static int Row(Vector2 point) => (int)Math.Floor(HalfHeight - point.Y);
         internal static Vector2 Cell(int column, int row) => new(column + .5f - HalfWidth, HalfHeight - row - .5f);
 
+        internal static bool BlocksSpawn(Vector2 position, float radius, int col, int row, Vector2 center, float spawnRadius)
+        {
+            float clearance = radius + spawnRadius;
+            return (Column(position) == col && Row(position) == row) ||
+                Vector2.DistanceSquared(position, center) <= clearance * clearance;
+        }
+
         internal static bool MayDeploy(int seat, int column, int row, bool leftUnlocked, bool rightUnlocked)
         {
             if (column < 0 || column >= Columns || row < 0 || row >= Rows)
@@ -58,7 +65,7 @@ namespace KingdomRhapsody
                 segment = ~segment - 1;
             float progress = (distance - patrolDistance[segment]) / (patrolDistance[segment + 1] - patrolDistance[segment]);
             Vector2 point = Vector2.Lerp(patrol[segment], patrol[segment + 1], progress);
-            return seat == 0 ? point : new Vector2(point.X, -point.Y);
+            return seat == 0 ? point : -point;
         }
 
         private static Vector2[] MakePatrol()

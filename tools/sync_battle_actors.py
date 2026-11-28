@@ -39,6 +39,7 @@ def main():
                 "loop": clip["loop"],
                 "cue": cues[0]["frame"] if cues else 0,
                 "sourceHash": sha256(path.read_bytes()).hexdigest(),
+                **{key: clip[key] for key in ("edgeAlpha", "erase") if key in clip},
             })
         assert clips[0]["pose"] == "Idle", actor["id"]
         descriptor = {

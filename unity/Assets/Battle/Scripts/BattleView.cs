@@ -35,8 +35,22 @@ namespace KingdomRhapsody
             }
         }
 
-        private readonly VisualElement root, stage, dialog;
-        private readonly Label timer, energyValue, hint, countdown, hazard, title;
+        private sealed class Aim
+        {
+            internal readonly int Slot;
+            internal readonly BattleCard Card;
+            internal bool HasOrigin, HasTarget;
+            internal WorldPoint Origin, Point, Direction;
+
+            internal Aim(int slot, BattleCard card)
+            {
+                Slot = slot;
+                Card = card;
+            }
+        }
+
+        private readonly VisualElement root, viewport, stage, dialog, header, dock;
+        private readonly Label timer, phase, energyValue, hint, countdown, hazard, title;
         private readonly Label[] princeHealth = new Label[2];
         private readonly VisualElement[] princeBars = new VisualElement[2];
         private readonly VisualElement energyBar;
@@ -49,17 +63,20 @@ namespace KingdomRhapsody
         private readonly Action rematch, resume;
         private readonly Action<string> playCue;
         private readonly Sprite cardArt, selectedArt;
-        private BattleMatch match;
-        private BattleCard selected;
-        private int selectedSlot = -1, dragPointer = -1, boardPointer = -1;
-        private bool hasOrigin, hasTarget;
-        private WorldPoint origin, point, direction = WorldPoint.UnitY;
+        private BattleSession match;
+        private BattleSceneFrame scene;
+        private readonly bool online;
+        private Aim selected;
+        private readonly Dictionary<int, Aim> dragAims = new Dictionary<int, Aim>();
+        private readonly List<BattleAimMarker> markers = new List<BattleAimMarker>(BattleMatch.HandSize);
+        private int boardPointer = -1;
         private int messageEnd, layoutWidth, layoutHeight;
         private Rect lastSafe;
 
         internal BattleView(VisualElement document, Font font, BattleArt art, Action pause, Action resume,
-            Action back, Action rematch, Action<string> playCue)
+            Action back, Action rematch, Action<string> playCue, bool online)
         {
+            this.online = online;
             this.rematch = rematch;
             this.resume = resume;
             this.playCue = playCue;
@@ -75,8 +92,11 @@ namespace KingdomRhapsody
             backdrop.style.opacity = .18f;
             root.Add(backdrop);
 
+            viewport = Box(0, 0, 0, 0);
+            viewport.style.overflow = Overflow.Hidden;
+            root.Add(viewport);
             stage = Box(0, 0, Width, Height);
-            root.Add(stage);
+            viewport.Add(stage);
             root.RegisterCallback<GeometryChangedEvent>(_ => Layout(true));
             var bezel = Box(Left - 3, BoardTop - 3, BattlefieldView.Width + 6, BattlefieldView.Height + 6);
             bezel.style.backgroundColor = (Color)new Color32(199, 157, 94, 255);
@@ -92,16 +112,20 @@ namespace KingdomRhapsody
             board.RegisterCallback<PointerCaptureOutEvent>(e => EndBoardPointer(e.pointerId));
             board.RegisterCallback<PointerLeaveEvent>(_ =>
             {
-                if (boardPointer < 0 && dragPointer < 0)
-                    ClearPoint();
+                if (boardPointer < 0 && selected != null)
+                {
+                    selected.HasTarget = false;
+                    RefreshAim();
+                }
             });
 
-            var header = Box(Left, 4, BattlefieldView.Width, 47);
+            header = Box(Left, 4, BattlefieldView.Width, 47);
             stage.Add(header);
             MakePrinceMeter(header, 1, 0, "敵方王子", Coral);
             MakePrinceMeter(header, 0, BattlefieldView.Width - 162, "我方王子", Cyan);
-            timer = Text(header, "", 203, 0, 89, 45, 24, Gold);
-            var pauseButton = ActionButton(header, "暫停", 164, 9, 50, 30, pause, false);
+            phase = Text(header, "延長賽", 207, 0, 89, 19, 14, Coral);
+            timer = Text(header, "", 207, 17, 89, 27, 24, Gold);
+            var pauseButton = ActionButton(header, online ? "離開" : "暫停", 163, 9, 47, 30, pause, false);
             pauseButton.style.fontSize = 13;
 
             countdown = Text(stage, "", Left + 10, BoardTop + 315, BattlefieldView.Width - 20, 102, 51, Ivory);
@@ -110,7 +134,7 @@ namespace KingdomRhapsody
             hazard.style.backgroundColor = Gold;
             Round(hazard, 12);
 
-            var dock = Box(Left, DockTop, BattlefieldView.Width, 121);
+            dock = Box(Left, DockTop, BattlefieldView.Width, 121);
             stage.Add(dock);
             energyValue = Text(dock, "", 0, 0, 130, 24, 16, Cyan, TextAnchor.MiddleLeft);
             var energyTrack = Box(0, 25, 130, 5);
@@ -156,22 +180,23 @@ namespace KingdomRhapsody
             HideDialog();
         }
 
-        internal void AttachMatch(BattleMatch value)
+        internal void AttachMatch(BattleSession value, BattlePresentation presentation)
         {
             ClearAim();
             HideDialog();
             match = value;
             messageEnd = 0;
             board.AttachMatch(value);
-            RefreshHud();
+            Present(presentation);
         }
 
         internal void Present(BattlePresentation presentation)
         {
             Layout();
+            scene = presentation.Visible;
             board.Present(presentation);
             RefreshHud();
-            if (selected != null && hasTarget)
+            if (selected != null || dragAims.Count > 0)
                 RefreshAim();
         }
 
@@ -179,14 +204,25 @@ namespace KingdomRhapsody
         {
             ClearAim();
             dialog.style.display = DisplayStyle.Flex;
-            title.text = result ? (match.Winner == BattleMatch.Draw ? "平手" : match.Winner == 0 ? "勝利" : "戰敗") : "暫停對練";
-            continueButton.text = result ? "再戰一場" : "繼續戰鬥";
+            title.text = result ? (match.Winner == BattleMatch.Draw ? "平手" : match.Winner == match.Seat ? "勝利" : "戰敗") :
+                online ? "離開對戰？" : "暫停對練";
+            continueButton.text = result ? (online ? "再次配對" : "再戰一場") : "繼續戰鬥";
             continueButton.Focus();
         }
 
         internal void HideDialog() => dialog.style.display = DisplayStyle.None;
-        private bool DialogOpen => dialog.style.display.value == DisplayStyle.Flex;
-        private bool CanSelect(int slot) => match != null && match.Live && !DialogOpen && dragPointer < 0 && boardPointer < 0 && match.Hand(0, slot) != null;
+        internal bool DialogOpen => dialog.style.display.value == DisplayStyle.Flex;
+
+        private bool SlotDragged(int slot)
+        {
+            foreach (Aim aim in dragAims.Values)
+                if (aim.Slot == slot)
+                    return true;
+            return false;
+        }
+
+        private bool CanSelect(int slot) => match != null && match.Live && !DialogOpen && !SlotDragged(slot) &&
+            (boardPointer < 0 || selected?.Slot != slot) && match.Hand(slot) != null;
 
         private void Continue()
         {
@@ -198,9 +234,10 @@ namespace KingdomRhapsody
 
         private void Sprint()
         {
-            if (DialogOpen || !match.TrySprint(0))
+            if (DialogOpen || !match.Sprint())
                 return;
-            playCue("confirm");
+            if (!online)
+                playCue("confirm");
             RefreshHud();
         }
 
@@ -208,73 +245,72 @@ namespace KingdomRhapsody
         {
             if (!CanSelect(slot))
                 return;
-            if (slot == selectedSlot)
-                ClearAim();
+            if (selected?.Slot == slot)
+                selected = null;
             else
             {
-                SelectSlot(slot);
+                selected = new Aim(slot, match.Hand(slot));
+                messageEnd = 0;
                 playCue("tap");
             }
+            RefreshAim();
             RefreshHud();
-        }
-
-        private void SelectSlot(int slot)
-        {
-            selectedSlot = slot;
-            selected = match.Hand(0, slot);
-            messageEnd = 0;
-            hasOrigin = false;
-            ClearPoint();
         }
 
         private void BeginDrag(int slot, int pointer)
         {
-            if (!CanSelect(slot))
+            if (!CanSelect(slot) || dragAims.ContainsKey(pointer))
                 return;
-            dragPointer = pointer;
-            SelectSlot(slot);
+            if (selected?.Slot == slot)
+                selected = null;
+            dragAims.Add(pointer, new Aim(slot, match.Hand(slot)));
+            messageEnd = 0;
+            RefreshAim();
         }
 
         private void Drag(int pointer, Vector2 at)
         {
-            if (pointer == dragPointer)
-                AimAt(board.World(at));
+            if (dragAims.TryGetValue(pointer, out Aim aim))
+            {
+                AimAt(aim, board.World(at), true);
+                RefreshAim();
+            }
         }
 
         private void EndDrag(int pointer, Vector2 at)
         {
-            if (pointer != dragPointer)
+            if (!dragAims.TryGetValue(pointer, out Aim aim))
                 return;
-            dragPointer = -1;
-            Commit(board.World(at));
+            dragAims.Remove(pointer);
+            Commit(aim, board.World(at));
         }
 
         private void CancelDrag(int pointer)
         {
-            if (pointer != dragPointer)
-                return;
-            dragPointer = -1;
-            ClearAim();
+            if (dragAims.Remove(pointer))
+                RefreshAim();
         }
 
         private void BoardDown(PointerDownEvent evt)
         {
-            if (dragPointer >= 0 || boardPointer >= 0 || selected == null || DialogOpen ||
+            if (boardPointer >= 0 || selected == null || DialogOpen || !match.Live ||
                 evt.pointerType == UnityEngine.UIElements.PointerType.mouse && evt.button != 0)
                 return;
 
             boardPointer = evt.pointerId;
-            hasOrigin = false;
-            AimAt(board.World(evt.position));
+            selected.HasOrigin = false;
+            AimAt(selected, board.World(evt.position), true);
             board.CapturePointer(boardPointer);
+            RefreshAim();
             evt.StopImmediatePropagation();
         }
 
         private void BoardMove(PointerMoveEvent evt)
         {
-            if (selected == null || dragPointer >= 0 || boardPointer >= 0 && boardPointer != evt.pointerId)
+            if (selected == null || boardPointer >= 0 && boardPointer != evt.pointerId)
                 return;
-            AimAt(board.World(evt.position));
+            AimAt(selected, board.World(evt.position), boardPointer >= 0);
+            RefreshAim();
         }
 
         private void BoardUp(PointerUpEvent evt)
@@ -284,7 +320,10 @@ namespace KingdomRhapsody
             int released = boardPointer;
             boardPointer = -1;
             board.ReleasePointer(released);
-            Commit(board.World(evt.position));
+            Aim aim = selected;
+            Commit(aim, board.World(evt.position));
+            if (selected == aim)
+                selected.HasOrigin = false;
             evt.StopImmediatePropagation();
         }
 
@@ -293,51 +332,69 @@ namespace KingdomRhapsody
             if (pointer != boardPointer)
                 return;
             boardPointer = -1;
-            hasOrigin = false;
-            ClearPoint();
+            if (selected != null)
+            {
+                selected.HasOrigin = selected.HasTarget = false;
+                RefreshAim();
+            }
         }
 
-        private void AimAt(WorldPoint location)
+        private void AimAt(Aim aim, WorldPoint location, bool anchorRift)
         {
-            if (selected == null || !Battlefield.Contains(location))
+            bool inBoard = Battlefield.Contains(location);
+            if (aim.Card.Skill == Skill.Rift && anchorRift)
             {
-                ClearPoint();
-                return;
-            }
-
-            hasTarget = true;
-            point = selected.IsSpell ? location : Battlefield.Cell(Battlefield.Column(location), Battlefield.Row(location));
-            direction = WorldPoint.UnitY;
-            if (selected.Skill == Skill.Rift && (boardPointer >= 0 || hasOrigin))
-            {
-                if (!hasOrigin)
+                if (!aim.HasOrigin && inBoard)
                 {
-                    origin = location;
-                    hasOrigin = true;
+                    aim.Origin = location;
+                    aim.HasOrigin = true;
                 }
-                WorldPoint aim = location - origin;
-                if (aim.LengthSquared() >= .04f)
-                    direction = WorldPoint.Normalize(aim);
-                point = origin;
+                if (aim.HasOrigin)
+                {
+                    WorldPoint heading = location - aim.Origin;
+                    aim.HasTarget = true;
+                    aim.Point = aim.Origin;
+                    aim.Direction = heading.LengthSquared() >= .04f ? WorldPoint.Normalize(heading) : match.Forward;
+                    return;
+                }
             }
+            aim.HasTarget = inBoard;
+            if (inBoard)
+            {
+                aim.Point = aim.Card.IsSpell ? location : Battlefield.Cell(Battlefield.Column(location), Battlefield.Row(location));
+                aim.Direction = match.Forward;
+            }
+        }
+
+        private void Commit(Aim aim, WorldPoint location)
+        {
+            if (aim == null)
+                return;
+            AimAt(aim, location, true);
+            PlayResult result = aim.HasTarget ? match.Play(aim.Slot, aim.Card, aim.Point, aim.Direction) : PlayResult.Bounds;
+            if (result == PlayResult.Accepted || result == PlayResult.Pending)
+            {
+                if (selected == aim)
+                    selected = null;
+            }
+            else if (selected == aim)
+                aim.HasTarget = false;
+            ReportResult(aim.Slot, result);
             RefreshAim();
         }
 
-        private void Commit(WorldPoint location)
+        internal void ReportResult(int slot, PlayResult result)
         {
-            AimAt(location);
-            PlayResult result = hasTarget ? match.Play(0, selectedSlot, selected, point, direction) : PlayResult.Bounds;
             if (result == PlayResult.Accepted)
             {
-                playCue("deploy");
-                ClearAim();
+                playCue(slot < 0 ? "confirm" : "deploy");
+                messageEnd = 0;
                 return;
             }
-            hasOrigin = false;
-            if (!hasTarget)
-                ClearPoint();
+
             hint.text = result switch
             {
+                PlayResult.Pending => "等待確認",
                 PlayResult.Energy => "能量不足",
                 PlayResult.Territory => "此格尚未解鎖",
                 PlayResult.Occupied => "此格已有角色",
@@ -345,35 +402,44 @@ namespace KingdomRhapsody
                 PlayResult.Bounds => "請在戰場內放開",
                 _ => "請重新選牌"
             };
-            hint.style.color = Coral;
+            hint.style.color = result == PlayResult.Pending ? Ivory : Coral;
             messageEnd = match.Tick + BattleMatch.TickRate * 2;
         }
 
         private void RefreshAim()
         {
-            bool valid = match.Validate(0, selectedSlot, selected, point) == PlayResult.Accepted;
-            board.MarkAim(selected, hasTarget, valid, point, direction);
+            markers.Clear();
+            bool showGrid = CollectMarker(selected);
+            foreach (Aim aim in dragAims.Values)
+                showGrid |= CollectMarker(aim);
+            board.MarkAims(markers, showGrid);
         }
 
-        private void ClearPoint()
+        private bool CollectMarker(Aim aim)
         {
-            hasTarget = false;
-            board.MarkAim(selected, false, false, default, default);
+            if (aim == null)
+                return false;
+            if (aim.HasTarget)
+            {
+                bool valid = match.Validate(aim.Slot, aim.Card, aim.Point) == PlayResult.Accepted;
+                markers.Add(new BattleAimMarker(aim.Card, aim.Point, aim.Direction, valid));
+            }
+            return !aim.Card.IsSpell;
         }
 
         internal bool ClearAim()
         {
-            bool active = selected != null;
+            bool active = selected != null || dragAims.Count > 0;
             int pointer = boardPointer;
-            dragPointer = boardPointer = selectedSlot = -1;
+            boardPointer = -1;
+            dragAims.Clear();
+            selected = null;
             if (pointer >= 0 && board.HasPointerCapture(pointer))
                 board.ReleasePointer(pointer);
             foreach (DuelCardDrag drag in drags)
                 drag.Cancel();
-            hasOrigin = false;
-            selected = null;
             messageEnd = 0;
-            ClearPoint();
+            RefreshAim();
             return active;
         }
 
@@ -426,38 +492,39 @@ namespace KingdomRhapsody
 
         private void RefreshHud()
         {
-            int remaining = Mathf.CeilToInt((BattleMatch.DurationTicks - match.Elapsed) / (float)BattleMatch.TickRate);
+            int remaining = Mathf.CeilToInt(match.PhaseTicksLeft / (float)BattleMatch.TickRate);
             Write(timer, $"{remaining / 60:00}:{remaining % 60:00}");
-            for (int seat = 0; seat < 2; seat++)
+            phase.style.display = match.Overtime ? DisplayStyle.Flex : DisplayStyle.None;
+            for (int i = 0; i < 2; i++)
             {
-                BattleUnit prince = match.Prince(seat);
-                Write(princeHealth[seat], $"{Mathf.CeilToInt(prince.Health)} / {(int)prince.Card.Health}");
-                princeBars[seat].style.width = Length.Percent(prince.Health / prince.Card.Health * 100);
+                float health = scene.Health(i == 0 ? match.Seat : 1 - match.Seat);
+                Write(princeHealth[i], $"{Mathf.CeilToInt(health)} / {(int)BattleCatalog.Prince.Health}");
+                princeBars[i].style.width = Length.Percent(health / BattleCatalog.Prince.Health * 100);
             }
-            Write(energyValue, $"能量 {match.Energy(0):0.0} / 10");
-            energyBar.style.width = Length.Percent((float)(match.Energy(0) / BattleMatch.MaxEnergy * 100));
-            int sprintLeft = Mathf.CeilToInt(match.SprintTicksLeft(0) / (float)BattleMatch.TickRate);
-            Write(sprint, sprintLeft == 0 ? "王子疾行" : $"疾行 {sprintLeft}s");
-            sprint.SetEnabled(match.Live && sprintLeft == 0 && !DialogOpen);
-            bool starting = match.Tick < BattleMatch.OpeningTicks;
+            Write(energyValue, $"能量 {match.Energy:0.0} / 10");
+            energyBar.style.width = Length.Percent((float)(match.Energy / BattleMatch.MaxEnergy * 100));
+            int sprintLeft = Mathf.CeilToInt(match.SprintTicksLeft / (float)BattleMatch.TickRate);
+            Write(sprint, sprintLeft == 0 ? $"疾行 {BattleMatch.SprintCost} 點" : $"疾行 {sprintLeft}s");
+            sprint.SetEnabled(match.CanSprint && !DialogOpen);
+            bool starting = match.Tick < BattleMatch.OpeningTicks && match.Winner == BattleMatch.Playing;
             countdown.style.display = starting ? DisplayStyle.Flex : DisplayStyle.None;
-            hazard.style.display = match.HazardWarning ? DisplayStyle.Flex : DisplayStyle.None;
+            hazard.style.display = scene.HazardWarning ? DisplayStyle.Flex : DisplayStyle.None;
             if (starting)
                 Write(countdown, Mathf.CeilToInt((BattleMatch.OpeningTicks - match.Tick) / (float)BattleMatch.TickRate).ToString());
             if (match.Tick >= messageEnd)
             {
                 hint.style.color = Ivory;
-                Write(hint, selected == null ? "點選或拖曳手牌" : selected.Skill == Skill.Rift ? "選牌後在戰場拖曳定向" :
-                    selected.IsSpell ? "放開施法" : "放開部署");
+                Write(hint, selected == null ? "點選或拖曳手牌" : selected.Card.Skill == Skill.Rift ? "在戰場拖曳定向" :
+                    selected.Card.IsSpell ? "放開施法" : "放開部署");
             }
             for (int i = 0; i < hand.Length; i++)
             {
-                BattleCard card = match.Hand(0, i);
+                BattleCard card = match.Hand(i);
                 PaintCard(hand[i], card, false);
-                Image(hand[i].Frame, i == selectedSlot ? selectedArt : cardArt, ScaleMode.StretchToFill);
-                hand[i].Button.style.opacity = match.Live && match.Energy(0) + 1e-8 >= card.Cost ? 1f : .58f;
+                Image(hand[i].Frame, i == selected?.Slot || SlotDragged(i) ? selectedArt : cardArt, ScaleMode.StretchToFill);
+                hand[i].Button.style.opacity = match.Live && match.Energy + 1e-8 >= card.Cost ? 1f : .58f;
             }
-            PaintCard(next, match.NextCard(0), true);
+            PaintCard(next, match.NextCard, true);
         }
 
         private void PaintCard(CardTile tile, BattleCard card, bool isNext)
@@ -530,11 +597,17 @@ namespace KingdomRhapsody
                 topLeft = Vector2.zero;
                 bottomRight = new Vector2(root.resolvedStyle.width, root.resolvedStyle.height);
             }
-            float scale = Mathf.Min((bottomRight.x - topLeft.x) / Width, (bottomRight.y - topLeft.y) / Height);
-            Vector2 center = (topLeft + bottomRight) * .5f;
+            Vector2 available = bottomRight - topLeft;
+            Place(viewport, topLeft.x, topLeft.y, available.x, available.y);
+            // Keep the field tall while its outer cell centers remain within reach.
+            float playableWidth = BattlefieldView.Width - BattlefieldView.Tile * .8f;
+            float scale = Mathf.Min(available.x / playableWidth, available.y / Height);
+            var center = available * .5f;
             stage.style.left = center.x - Width / 2;
             stage.style.top = center.y - Height / 2;
             stage.style.scale = new Scale(new Vector2(scale, scale));
+            float hudScale = Mathf.Min(1, available.x / (scale * BattlefieldView.Width));
+            header.style.scale = dock.style.scale = new Scale(new Vector2(hudScale, 1));
         }
 
         private static void FillRoot(VisualElement element)

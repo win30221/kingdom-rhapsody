@@ -22,6 +22,6 @@
 
 `PortraitLobby` 在 Play 時組合 uGUI Canvas。版面在 `Assets/Lobby/Scripts/PortraitLobby.cs`，圖層和 WAV 在 `Assets/Lobby/Resources/Lobby/`。卡牌縮圖會從同一個 repository 的 `art/` 匯入。更新精靈表後，可在 Unity 裡對對應的 `.lobbyportrait` 資產執行 Reimport。
 
-點擊「出戰」會帶入已選的兩位護衛和八張卡，直接開始本機 AI 對練。[玩法與驗證](docs/battle-practice.md)。
+點擊「出戰」會帶入已選的兩位護衛和八張卡，可選擇本機 AI 對練或正式雙人 1v1。[玩法與驗證](docs/battle-practice.md) · [雙人伺服器啟動方式](server/README.md)
 
 [UI 設計預覽與原始素材](art/ui)

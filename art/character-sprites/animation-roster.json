@@ -145,6 +145,62 @@
               "frame": 6,
               "cue": "spawn-bolt"
             }
+          ],
+          "erase": [
+            {
+              "row": 1,
+              "first": 6,
+              "count": 1,
+              "x": 167,
+              "y": 0,
+              "width": 89,
+              "height": 256
+            },
+            {
+              "row": 2,
+              "first": 6,
+              "count": 1,
+              "x": 181,
+              "y": 0,
+              "width": 75,
+              "height": 256
+            },
+            {
+              "row": 3,
+              "first": 6,
+              "count": 1,
+              "x": 165,
+              "y": 0,
+              "width": 91,
+              "height": 256
+            },
+            {
+              "row": 5,
+              "first": 6,
+              "count": 1,
+              "x": 0,
+              "y": 0,
+              "width": 90,
+              "height": 256
+            },
+            {
+              "row": 6,
+              "first": 6,
+              "count": 1,
+              "x": 0,
+              "y": 0,
+              "width": 73,
+              "height": 256
+            },
+            {
+              "row": 7,
+              "first": 6,
+              "count": 1,
+              "x": 0,
+              "y": 0,
+              "width": 90,
+              "height": 256
+            }
           ]
         }
       ]
@@ -659,7 +715,8 @@
           "fps": 16,
           "loop": true,
           "origin": "redrawn",
-          "minDistinctPoses": 4
+          "minDistinctPoses": 4,
+          "edgeAlpha": 124
         },
         {
           "id": "lash",
@@ -676,7 +733,27 @@
               "cue": "hit"
             }
           ],
-          "minDistinctPoses": 5
+          "minDistinctPoses": 5,
+          "erase": [
+            {
+              "row": 0,
+              "first": 6,
+              "count": 2,
+              "x": 143,
+              "y": 108,
+              "width": 113,
+              "height": 148
+            },
+            {
+              "row": 0,
+              "first": 8,
+              "count": 2,
+              "x": 170,
+              "y": 135,
+              "width": 86,
+              "height": 121
+            }
+          ]
         },
         {
           "id": "bloom",
@@ -693,7 +770,27 @@
               "cue": "critical-hit"
             }
           ],
-          "minDistinctPoses": 5
+          "minDistinctPoses": 5,
+          "erase": [
+            {
+              "row": 0,
+              "first": 6,
+              "count": 2,
+              "x": 143,
+              "y": 108,
+              "width": 113,
+              "height": 148
+            },
+            {
+              "row": 0,
+              "first": 8,
+              "count": 2,
+              "x": 170,
+              "y": 135,
+              "width": 86,
+              "height": 121
+            }
+          ]
         }
       ]
     },

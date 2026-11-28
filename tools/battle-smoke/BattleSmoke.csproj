@@ -11,6 +11,7 @@
     <Compile Include="../../unity/Assets/Lobby/Scripts/LobbyLoadout.cs" />
     <Compile Include="../../unity/Assets/Battle/Scripts/Simulation/*.cs" />
     <Compile Include="../../unity/Assets/Battle/Scripts/BattlePresentation.cs" />
+    <Compile Include="../../unity/Assets/Battle/Scripts/Online/BattleWire.cs" />
     <Compile Include="../../unity/Packages/com.realtime.core/Runtime/*.cs" />
     <Compile Include="../../unity/Packages/com.realtime.interpolation/Runtime/*.cs" />
     <Compile Include="../../unity/Packages/com.realtime.replication/Runtime/*.cs" />

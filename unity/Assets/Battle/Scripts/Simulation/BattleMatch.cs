@@ -5,8 +5,11 @@ using System.Numerics;
 namespace KingdomRhapsody
 {
     public enum BattlePose { Idle, Walk, Sprint, Action, Bloom, ShieldBreak, ShieldRegrow, Awaken }
-    internal enum PlayResult { Accepted, Inactive, CardChanged, Energy, Bounds, Territory, Occupied, UnitLimit }
-    internal enum EffectKind { Point, Area, Projectile, Rift, Heal, Hazard, MeteorWarning }
+    internal enum PlayResult { Accepted, Inactive, CardChanged, Energy, Bounds, Territory, Occupied, UnitLimit, Pending }
+    internal enum EffectKind { Point, Area, Projectile, Rift, Heal, Rally, Hazard, MeteorWarning, ShieldBreak, ShieldRegrow, Death }
+
+    [Flags]
+    internal enum BattleStatus { None = 0, Slow = 1, Poison = 2, Stun = 4, Rally = 8, Awakened = 16, ShieldDown = 32 }
 
     internal readonly struct ActionTiming
     {
@@ -19,6 +22,9 @@ namespace KingdomRhapsody
         }
 
         internal static ActionTiming Standard => new(12, 16, 6);
+
+        internal int DurationTicks => Math.Max(2, (int)Math.Ceiling(Length * BattleMatch.TickRate));
+        internal int CueTick(int duration) => Math.Clamp((int)Math.Ceiling(duration * ContactFraction), 1, duration - 1);
     }
 
     internal sealed class BattleUnit
@@ -33,6 +39,8 @@ namespace KingdomRhapsody
         internal float Health, Shield, PatrolDistance;
         internal int NextAction, ActionContact, ActionEnd, PoseTick, PoseLength, StatusEnd;
         internal int SlowEnd, PoisonEnd, PoisonNext, StunEnd, StunImmuneEnd, ShieldReady, SuccessfulHits;
+        internal int LastHitTick = -1;
+        internal float WalkPhase;
         internal bool Awakened;
         internal BattlePose Pose;
         internal BattleUnit LockedTarget;
@@ -59,6 +67,8 @@ namespace KingdomRhapsody
             Pose = pose;
             PoseTick = tick;
             PoseLength = length;
+            if (pose == BattlePose.Walk)
+                WalkPhase = 0;
         }
     }
 
@@ -66,13 +76,15 @@ namespace KingdomRhapsody
     {
         internal readonly EffectKind Kind;
         internal readonly Vector2 Origin, Target;
-        internal readonly int Begin, End;
+        internal readonly int Id, Begin, End;
         internal readonly float Radius;
         internal readonly Skill Skill;
+        internal readonly string TrackingKey;
 
-        internal BattleEffect(EffectKind kind, Vector2 origin, Vector2 target,
-            int begin, int end, float radius, Skill skill)
+        internal BattleEffect(int id, EffectKind kind, Vector2 origin, Vector2 target,
+            int begin, int end, float radius, Skill skill, string trackingKey)
         {
+            Id = id;
             Kind = kind;
             Origin = origin;
             Target = target;
@@ -80,15 +92,20 @@ namespace KingdomRhapsody
             End = end;
             Radius = radius;
             Skill = skill;
+            TrackingKey = trackingKey;
         }
     }
 
     internal sealed class BattleMatch
     {
         internal const int TickRate = 30, SnapshotRate = 15;
-        internal const int OpeningTicks = 2 * TickRate, DurationTicks = 180 * TickRate;
+        internal const int OpeningTicks = 2 * TickRate, RegulationTicks = 180 * TickRate;
+        internal const int OvertimeTicks = 60 * TickRate, DurationTicks = RegulationTicks + OvertimeTicks;
         internal const int HandSize = 4, MaxUnitsPerSide = 40;
         internal const double MaxEnergy = 10, StartEnergy = 5;
+        internal const int SprintCost = 2, OvertimeEnergyMultiplier = 2;
+        internal const float RallyRadius = 3;
+        internal const int DeathAnimationTicks = 12;
         internal const int Playing = -2, Draw = -1;
         private const float Detection = 7, SprintSpeed = 4.5f;
         private const int SprintLength = 3 * TickRate, SprintCooldown = 15 * TickRate;
@@ -139,6 +156,19 @@ namespace KingdomRhapsody
             }
         }
 
+        private readonly struct Delivery
+        {
+            internal readonly BattleUnit Source, Target;
+            internal readonly int Impact;
+
+            internal Delivery(BattleUnit source, BattleUnit target, int impact)
+            {
+                Source = source;
+                Target = target;
+                Impact = impact;
+            }
+        }
+
         internal static readonly string[] PracticeDeck =
         {
             "footman", "bow-recruit", "shieldman", "light-cavalry",
@@ -149,14 +179,22 @@ namespace KingdomRhapsody
         private readonly Func<string, BattlePose, ActionTiming> getTiming;
         private readonly List<BattleUnit> units = new List<BattleUnit>();
         private readonly List<Spell> spells = new List<Spell>();
+        private readonly List<Delivery> deliveries = new List<Delivery>();
+        private readonly List<(BattleUnit Source, BattleUnit Target)> contacts = new List<(BattleUnit, BattleUnit)>();
+        private readonly List<(BattleUnit Target, float Power, Skill Skill, bool Pierce)> damage =
+            new List<(BattleUnit, float, Skill, bool)>();
+        private readonly List<(BattleUnit Target, float Power)> healing = new List<(BattleUnit, float)>();
         private readonly List<BattleEffect> effects = new List<BattleEffect>();
         private readonly bool practiceOpponent;
-        private int nextId, nextBotPlay, nextBotLane;
+        private int nextId, nextEffectId, nextBotPlay, nextBotLane;
 
         internal int Tick { get; private set; }
         internal int Winner { get; private set; } = Playing;
         internal int Elapsed => Math.Max(0, Tick - OpeningTicks);
+        internal bool Overtime => Elapsed >= RegulationTicks;
+        internal int PhaseTicksLeft => Math.Max(0, (Overtime ? DurationTicks : RegulationTicks) - Elapsed);
         internal bool Live => Tick >= OpeningTicks && Winner == Playing;
+        internal bool PresentationChanged { get; private set; }
         internal int HazardTicksLeft => HazardPeriod - Elapsed % HazardPeriod;
         internal bool HazardWarning => Live && HazardTicksLeft <= Battlefield.HazardWarning * TickRate;
         internal IReadOnlyList<BattleUnit> Units => units;
@@ -164,17 +202,24 @@ namespace KingdomRhapsody
 
         internal BattleMatch(BattleLoadout loadout, Func<string, BattlePose, ActionTiming> getTiming = null,
             bool practiceOpponent = true)
+            : this(loadout, new BattleLoadout(RoyalGuard.Crossbowman, RoyalGuard.Spearman, PracticeDeck), getTiming, practiceOpponent) { }
+
+        internal BattleMatch(BattleLoadout first, BattleLoadout second, Func<string, BattlePose, ActionTiming> getTiming = null,
+            bool practiceOpponent = false)
         {
             this.getTiming = getTiming ?? ((_, _) => ActionTiming.Standard);
             this.practiceOpponent = practiceOpponent;
-            sides = new[] { new Side(loadout.TroopIds), new Side(PracticeDeck) };
+            var loadouts = new[] { first, second };
+            sides = new[] { new Side(first.TroopIds), new Side(second.TroopIds) };
             for (int seat = 0; seat < sides.Length; seat++)
             {
                 Side side = sides[seat];
                 side.Prince = AddUnit(seat, BattleCatalog.Prince, Battlefield.Patrol(seat, 0));
-                side.Guards[0] = AddUnit(seat, BattleCatalog.Guard(seat == 0 ? loadout.LeftGuard : RoyalGuard.Spearman),
+                RoyalGuard left = seat == 0 ? loadouts[seat].LeftGuard : loadouts[seat].RightGuard;
+                RoyalGuard right = seat == 0 ? loadouts[seat].RightGuard : loadouts[seat].LeftGuard;
+                side.Guards[0] = AddUnit(seat, BattleCatalog.Guard(left),
                     Battlefield.GuardHome(seat, 0), 0);
-                side.Guards[1] = AddUnit(seat, BattleCatalog.Guard(seat == 0 ? loadout.RightGuard : RoyalGuard.Crossbowman),
+                side.Guards[1] = AddUnit(seat, BattleCatalog.Guard(right),
                     Battlefield.GuardHome(seat, 1), 1);
             }
             nextBotPlay = OpeningTicks + TickRate;
@@ -186,15 +231,33 @@ namespace KingdomRhapsody
         internal BattleCard NextCard(int seat) => sides[seat].Queue.Peek();
         internal int SprintTicksLeft(int seat) => Math.Max(0, sides[seat].SprintReady - Tick);
         internal bool Unlocked(int seat, int side) => !sides[1 - seat].Guards[side].Alive;
+        internal int TerritoryMask => (Unlocked(0, 0) ? 1 : 0) | (Unlocked(0, 1) ? 2 : 0) |
+            (Unlocked(1, 0) ? 4 : 0) | (Unlocked(1, 1) ? 8 : 0);
+
+        internal void Forfeit(int seat)
+        {
+            if (Winner != Playing)
+                return;
+            Tick++;
+            Winner = 1 - seat;
+        }
 
         internal bool MayDeploy(int seat, int col, int row) =>
             Battlefield.MayDeploy(seat, col, row, Unlocked(seat, 0), Unlocked(seat, 1));
 
-        internal bool TrySprint(int seat)
+        internal bool CanSprint(int seat)
         {
             Side side = sides[seat];
-            if (!Live || !side.Prince.Alive || Tick < side.SprintReady || Tick < side.Prince.StunEnd)
+            return Live && side.Prince.Alive && Tick >= side.SprintReady && Tick >= side.Prince.StunEnd &&
+                side.Energy + 1e-8 >= SprintCost;
+        }
+
+        internal bool TrySprint(int seat)
+        {
+            if (!CanSprint(seat))
                 return false;
+            Side side = sides[seat];
+            side.Energy = Math.Max(0, side.Energy - SprintCost);
             side.SprintEnd = Tick + SprintLength;
             side.SprintReady = Tick + SprintCooldown;
             return true;
@@ -225,8 +288,7 @@ namespace KingdomRhapsody
                     continue;
                 if (unit.Seat == seat)
                     count++;
-                if (Battlefield.Column(unit.Position) == col && Battlefield.Row(unit.Position) == row ||
-                    Within(unit.Position, center, unit.Card.Radius + expected.Radius))
+                if (Battlefield.BlocksSpawn(unit.Position, unit.Card.Radius, col, row, center, expected.Radius))
                     return PlayResult.Occupied;
             }
             return count >= MaxUnitsPerSide ? PlayResult.UnitLimit : PlayResult.Accepted;
@@ -242,14 +304,11 @@ namespace KingdomRhapsody
             {
                 Vector2 forward = direction.LengthSquared() >= .01f && float.IsFinite(direction.LengthSquared())
                     ? Vector2.Normalize(direction) : (seat == 0 ? Vector2.UnitY : -Vector2.UnitY);
-                var spell = new Spell(seat, expected, point, forward, Tick + (expected.Skill == Skill.Meteor ? TickRate : 0));
-                if (spell.Impact == Tick)
-                    ResolveSpell(spell);
-                else
-                {
-                    spells.Add(spell);
+                // Commands accepted between ticks share the next impact phase.
+                var spell = new Spell(seat, expected, point, forward, Tick + (expected.Skill == Skill.Meteor ? TickRate : 1));
+                spells.Add(spell);
+                if (expected.Skill == Skill.Meteor)
                     AddEffect(EffectKind.MeteorWarning, point, point, TickRate, expected.Range, Skill.Meteor);
-                }
             }
             else
             {
@@ -258,7 +317,7 @@ namespace KingdomRhapsody
             }
 
             Side side = sides[seat];
-            side.Energy -= expected.Cost;
+            side.Energy = Math.Max(0, side.Energy - expected.Cost);
             side.Cycle(slot);
             return PlayResult.Accepted;
         }
@@ -269,12 +328,42 @@ namespace KingdomRhapsody
                 return;
 
             Tick++;
+            PresentationChanged = false;
             if (Tick <= OpeningTicks)
                 return;
 
             effects.RemoveAll(effect => effect.End + TickRate / SnapshotRate < Tick);
+            double energyPerTick = (Elapsed > RegulationTicks ? OvertimeEnergyMultiplier : 1) / (3d * TickRate);
             foreach (Side side in sides)
-                side.Energy = Math.Min(MaxEnergy, side.Energy + 1d / (3 * TickRate));
+                side.Energy = Math.Min(MaxEnergy, side.Energy + energyPerTick);
+
+            contacts.Clear();
+            damage.Clear();
+            healing.Clear();
+            foreach (BattleUnit unit in units)
+                if (unit.Alive)
+                    StepStatus(unit);
+            foreach (BattleUnit unit in units)
+                if (unit.Alive)
+                    StepUnit(unit);
+
+            ResolveBodies();
+            // Collect this tick's valid contacts before applying any damage or control.
+            foreach (var contact in contacts)
+                if (CanContact(contact.Source, contact.Target))
+                    ReleaseContact(contact.Source, contact.Target);
+
+            for (int i = 0; i < deliveries.Count;)
+            {
+                Delivery delivery = deliveries[i];
+                if (delivery.Impact > Tick)
+                {
+                    i++;
+                    continue;
+                }
+                Contact(delivery.Source, delivery.Target);
+                deliveries.RemoveAt(i);
+            }
 
             for (int i = 0; i < spells.Count;)
             {
@@ -292,18 +381,14 @@ namespace KingdomRhapsody
             {
                 foreach (BattleUnit unit in units)
                     if (unit.Alive && Battlefield.InHazard(unit.Position))
-                        Damage(unit, unit.Card.Health * .08f);
+                        QueueDamage(unit, unit.Card.Health * .08f);
                 AddEffect(EffectKind.Hazard, Vector2.Zero, Vector2.Zero, 12, 0, Skill.Flame);
             }
 
+            ResolveImpacts();
             foreach (BattleUnit unit in units)
-                if (unit.Alive)
-                    StepStatus(unit);
-            foreach (BattleUnit unit in units)
-                if (unit.Alive)
-                    StepUnit(unit);
-
-            ResolveBodies();
+                if (!unit.Alive)
+                    AddEffect(EffectKind.Death, unit.Position, unit.Position, DeathAnimationTicks, 0, Skill.Strike);
             units.RemoveAll(unit => !unit.Alive);
             CheckEnd();
             if (Live && practiceOpponent)
@@ -321,39 +406,40 @@ namespace KingdomRhapsody
         {
             if (unit.PoisonNext != 0 && Tick >= unit.PoisonNext && Tick <= unit.PoisonEnd)
             {
-                Damage(unit, 22, true);
+                QueueDamage(unit, 22, pierce: true);
                 unit.PoisonNext += TickRate;
             }
-            if (!unit.Alive)
+            if (unit.ShieldReady == 0)
                 return;
-            if (unit.ShieldReady != 0 && Tick >= unit.ShieldReady)
+
+            ActionTiming timing = getTiming(unit.Card.Id, BattlePose.ShieldRegrow);
+            if (Tick == unit.ShieldReady - timing.CueTick(timing.DurationTicks))
+                StartStatus(unit, BattlePose.ShieldRegrow);
+            if (Tick >= unit.ShieldReady)
             {
                 unit.ShieldReady = 0;
                 unit.Shield = 400;
-                StartStatus(unit, BattlePose.ShieldRegrow);
+                AddEffect(EffectKind.ShieldRegrow, unit.Position, unit.Position, 12, 0, Skill.Shield);
             }
         }
 
         private void StepUnit(BattleUnit unit)
         {
+            if (Tick < unit.StatusEnd)
+                return;
             if (Tick < unit.StunEnd)
             {
                 CancelAction(unit);
                 unit.SetPose(BattlePose.Idle, Tick);
                 return;
             }
-            if (Tick < unit.StatusEnd)
-                return;
-
             if (unit.IsPrince)
             {
                 bool sprint = Tick <= sides[unit.Seat].SprintEnd;
                 float speed = sprint ? SprintSpeed : unit.Card.Speed;
                 unit.PatrolDistance += speed * SlowFactor(unit) / TickRate;
                 Vector2 next = Battlefield.Patrol(unit.Seat, unit.PatrolDistance);
-                Face(unit, next);
-                unit.Position = next;
-                unit.SetPose(sprint ? BattlePose.Sprint : BattlePose.Walk, Tick);
+                MoveTo(unit, next, sprint ? BattlePose.Sprint : BattlePose.Walk);
                 return;
             }
 
@@ -363,8 +449,7 @@ namespace KingdomRhapsody
                 {
                     BattleUnit target = unit.LockedTarget;
                     unit.LockedTarget = null;
-                    if (CanContact(unit, target))
-                        Contact(unit, target);
+                    contacts.Add((unit, target));
                 }
                 return;
             }
@@ -378,6 +463,16 @@ namespace KingdomRhapsody
                 else
                     unit.SetPose(BattlePose.Idle, Tick);
                 return;
+            }
+
+            if (targetUnit == null && unit.Card.Skill == Skill.Heal)
+            {
+                BattleUnit escort = FindTarget(unit, followHealthy: true);
+                if (escort != null)
+                {
+                    Move(unit, Within(unit.Position, escort.Position, 3) ? unit.Position : escort.Position);
+                    return;
+                }
             }
 
             Vector2 goal = targetUnit?.Position ?? AdvanceGoal(unit);
@@ -410,9 +505,17 @@ namespace KingdomRhapsody
                 return;
             }
 
+            MoveTo(unit, next, BattlePose.Walk);
+        }
+
+        private void MoveTo(BattleUnit unit, Vector2 next, BattlePose pose)
+        {
+            float distance = Vector2.Distance(unit.Position, next);
             Face(unit, next);
             unit.Position = next;
-            unit.SetPose(BattlePose.Walk, Tick);
+            unit.SetPose(pose, Tick);
+            if (pose == BattlePose.Walk)
+                unit.WalkPhase += distance * TickRate / unit.Card.Speed;
         }
 
         private Vector2 AdvanceGoal(BattleUnit unit)
@@ -428,7 +531,7 @@ namespace KingdomRhapsody
                 ? new Vector2(unit.LaneX, forward * 9) : enemyPrince.Position;
         }
 
-        private BattleUnit FindTarget(BattleUnit unit)
+        private BattleUnit FindTarget(BattleUnit unit, bool followHealthy = false)
         {
             BattleUnit best = null;
             float nearest = float.MaxValue;
@@ -441,16 +544,15 @@ namespace KingdomRhapsody
                 {
                     if (candidate.Seat != unit.Seat || candidate.IsPrince || candidate.Card.IsSupport)
                         continue;
-                    if (unit.Card.Skill == Skill.Heal && candidate.Health >= candidate.Card.Health)
+                    if (!followHealthy && unit.Card.Skill == Skill.Heal && candidate.Health >= candidate.Card.Health)
                         continue;
                 }
                 else if (candidate.Seat == unit.Seat || unit.Card.Skill == Skill.Charge && !candidate.IsPrince)
                     continue;
 
                 float distance = Vector2.DistanceSquared(unit.Position, candidate.Position);
-                if (distance >= nearest || distance > Detection * Detection)
-                    continue;
-                if (unit.GuardSide >= 0 && !CanGuardEngage(unit, candidate))
+                if (distance >= nearest || (unit.GuardSide >= 0
+                    ? !CanGuardEngage(unit, candidate) : distance > Detection * Detection))
                     continue;
 
                 nearest = distance;
@@ -461,19 +563,18 @@ namespace KingdomRhapsody
 
         private static bool CanGuardEngage(BattleUnit guard, BattleUnit target)
         {
-            if (!Within(guard.Home, target.Position, Battlefield.GuardDetection))
-                return false;
-            float minimumDistance = Vector2.Distance(guard.Home, target.Position) - Battlefield.GuardLeash
-                - guard.Card.Radius - target.Card.Radius;
-            return minimumDistance <= guard.Card.Range;
+            float edgeDistance = Vector2.Distance(guard.Home, target.Position) - guard.Card.Radius - target.Card.Radius;
+            return edgeDistance <= Battlefield.GuardDetection && edgeDistance <= Battlefield.GuardLeash + guard.Card.Range;
         }
 
         private static bool CanContact(BattleUnit attacker, BattleUnit target) =>
             target.Alive && InAttackRange(attacker, target) &&
-            (attacker.GuardSide < 0 || Within(attacker.Home, target.Position, Battlefield.GuardDetection));
+            (attacker.GuardSide < 0 || CanGuardEngage(attacker, target));
 
         private static bool InAttackRange(BattleUnit attacker, BattleUnit target)
         {
+            if (attacker.Card.Skill == Skill.Rally)
+                return Within(attacker.Position, target.Position, RallyRadius);
             if (ContactDistance(attacker, target) > attacker.Card.Range + .001f)
                 return false;
             return attacker.Card.Skill switch
@@ -491,8 +592,8 @@ namespace KingdomRhapsody
             BattlePose pose = unit.Card.Skill == Skill.Bloom && unit.SuccessfulHits % 3 == 2
                 ? BattlePose.Bloom : BattlePose.Action;
             ActionTiming timing = getTiming(unit.Card.Id, pose);
-            int duration = Math.Clamp(ToTicks(timing.Length), 2, interval);
-            int contact = Math.Clamp((int)Math.Ceiling(duration * timing.ContactFraction), 1, duration - 1);
+            int duration = Math.Min(timing.DurationTicks, interval);
+            int contact = timing.CueTick(duration);
             unit.LockedTarget = target;
             unit.ActionContact = Tick + contact;
             unit.ActionEnd = Tick + duration;
@@ -502,49 +603,126 @@ namespace KingdomRhapsody
 
         private bool HasRally(BattleUnit unit)
         {
-            if (unit.Card.IsSupport)
+            if (unit.IsPrince || unit.Card.IsSupport)
                 return false;
             foreach (BattleUnit friendly in units)
                 if (friendly.Alive && friendly.Seat == unit.Seat && friendly.Card.Skill == Skill.Rally &&
-                    Within(unit.Position, friendly.Position, 3))
+                    Within(unit.Position, friendly.Position, RallyRadius))
                     return true;
             return false;
+        }
+
+        internal BattleStatus Status(BattleUnit unit)
+        {
+            BattleStatus status = BattleStatus.None;
+            if (Tick < unit.SlowEnd) status |= BattleStatus.Slow;
+            if (unit.PoisonEnd != 0 && Tick <= unit.PoisonEnd) status |= BattleStatus.Poison;
+            if (Tick < unit.StunEnd) status |= BattleStatus.Stun;
+            if (HasRally(unit)) status |= BattleStatus.Rally;
+            if (unit.Awakened) status |= BattleStatus.Awakened;
+            if (unit.Card.Skill == Skill.Shield && unit.Shield == 0) status |= BattleStatus.ShieldDown;
+            return status;
+        }
+
+        private void ReleaseContact(BattleUnit unit, BattleUnit target)
+        {
+            if (unit.Card.FlightTicks == 0)
+            {
+                Contact(unit, target);
+                return;
+            }
+
+            deliveries.Add(new Delivery(unit, target, Tick + unit.Card.FlightTicks));
+            AddEffect(EffectKind.Projectile, unit.Position, target.Position, unit.Card.FlightTicks, 0, unit.Card.Skill, target.Key);
         }
 
         private void Contact(BattleUnit unit, BattleUnit target)
         {
             Skill skill = unit.Card.Skill;
             float power = unit.Card.Power;
-            if (skill == Skill.Rally || skill == Skill.Heal)
+            if (skill == Skill.Cannon || skill == Skill.Flame || skill == Skill.Hammer)
             {
-                if (skill == Skill.Heal)
-                    Heal(target, power);
-                AddEffect(EffectKind.Heal, unit.Position, target.Position, 10, 0, skill);
+                Vector2 center = skill == Skill.Hammer ? unit.Position : target.Position;
+                float radius = skill == Skill.Hammer ? 1.8f : skill == Skill.Cannon ? 1.5f : 1.1f;
+                foreach (BattleUnit enemy in units)
+                    if (enemy.Alive && enemy.Seat != unit.Seat && Within(enemy.Position, center, radius + enemy.Card.Radius))
+                        QueueDamage(enemy, power);
+                AddEffect(EffectKind.Area, unit.Position, center, 12, radius, skill);
+                return;
+            }
+
+            if (skill == Skill.Axe)
+            {
+                bool hit = false;
+                foreach (BattleUnit enemy in units)
+                {
+                    Vector2 offset = enemy.Position - unit.Position;
+                    if (!enemy.Alive || enemy.Seat == unit.Seat || !InAttackRange(unit, enemy) ||
+                        Vector2.Dot(unit.Heading, offset) < .5f * offset.Length())
+                        continue;
+                    QueueDamage(enemy, power);
+                    AddEffect(EffectKind.Point, unit.Position, enemy.Position, 9, 0, skill);
+                    hit = true;
+                }
+
+                if (hit)
+                    unit.SuccessfulHits++;
+                return;
+            }
+
+            if (!target.Alive)
+                return;
+            if (skill == Skill.Rally)
+            {
+                AddEffect(EffectKind.Rally, unit.Position, unit.Position, 12, RallyRadius, skill);
+                return;
+            }
+            if (skill == Skill.Heal)
+            {
+                healing.Add((target, power));
                 return;
             }
 
             unit.SuccessfulHits++;
+            if (skill == Skill.Sunder && !target.IsPrince)
+                power += target.Card.Health * .05f;
+            if (skill == Skill.Bloom && unit.SuccessfulHits % 3 == 0)
+                power *= 2;
+
+            QueueDamage(target, power, skill);
+            if (skill == Skill.Lifesteal && unit.Awakened)
+                healing.Add((unit, 35));
+            AddEffect(EffectKind.Point, unit.Position, target.Position, 9, 0, skill);
+        }
+
+        private void QueueDamage(BattleUnit target, float power, Skill skill = Skill.Strike, bool pierce = false) =>
+            damage.Add((target, power, skill, pierce));
+
+        private void ResolveImpacts()
+        {
+            foreach (var hit in damage)
+            {
+                BattleUnit target = hit.Target;
+                if (!target.Alive)
+                    continue;
+                ApplyAilment(target, hit.Skill);
+                Damage(target, hit.Power, hit.Pierce);
+            }
+
+            foreach (var heal in healing)
+            {
+                BattleUnit target = heal.Target;
+                if (!target.Alive || target.Health >= target.Card.Health)
+                    continue;
+                Heal(target, heal.Power);
+                AddEffect(EffectKind.Heal, target.Position, target.Position, 10, 0, Skill.Heal);
+            }
+        }
+
+        private void ApplyAilment(BattleUnit target, Skill skill)
+        {
             switch (skill)
             {
-                case Skill.Cannon:
-                case Skill.Flame:
-                case Skill.Hammer:
-                    Vector2 center = skill == Skill.Hammer ? unit.Position : target.Position;
-                    float radius = skill == Skill.Hammer ? 1.8f : skill == Skill.Cannon ? 1.5f : 1.1f;
-                    foreach (BattleUnit enemy in units)
-                        if (enemy.Alive && enemy.Seat != unit.Seat && Within(enemy.Position, center, radius + enemy.Card.Radius))
-                            Damage(enemy, power);
-                    AddEffect(EffectKind.Area, unit.Position, center, 12, radius, skill);
-                    return;
-                case Skill.Axe:
-                    foreach (BattleUnit enemy in units)
-                    {
-                        Vector2 offset = enemy.Position - unit.Position;
-                        if (enemy.Alive && enemy.Seat != unit.Seat && InAttackRange(unit, enemy) &&
-                            Vector2.Dot(unit.Heading, offset) >= .5f * offset.Length())
-                            Damage(enemy, power);
-                    }
-                    break;
                 case Skill.Frost:
                     target.SlowEnd = Tick + ToTicks(1.5f);
                     break;
@@ -553,29 +731,14 @@ namespace KingdomRhapsody
                         target.PoisonNext = Tick + TickRate;
                     target.PoisonEnd = Tick + 4 * TickRate;
                     break;
-                case Skill.Stun:
-                    if (Tick >= target.StunImmuneEnd)
-                    {
-                        target.StunEnd = Tick + ToTicks(.4f);
-                        target.StunImmuneEnd = target.StunEnd + ToTicks(.6f);
-                        CancelAction(target);
-                    }
-                    break;
-                case Skill.Sunder:
-                    if (!target.IsPrince)
-                        power += target.Card.Health * .05f;
-                    break;
-                case Skill.Bloom:
-                    if (unit.SuccessfulHits % 3 == 0)
-                        power *= 2;
+                case Skill.Stun when Tick >= target.StunImmuneEnd:
+                    target.StunEnd = Tick + ToTicks(.4f);
+                    target.StunImmuneEnd = target.StunEnd + ToTicks(.6f);
+                    CancelAction(target);
+                    if (Tick >= target.StatusEnd)
+                        target.SetPose(BattlePose.Idle, Tick);
                     break;
             }
-            if (skill != Skill.Axe)
-                Damage(target, power);
-            if (skill == Skill.Lifesteal && unit.Awakened)
-                Heal(unit, 35);
-            AddEffect(unit.Card.Range >= 4 ? EffectKind.Projectile : EffectKind.Point,
-                unit.Position, target.Position, 9, 0, skill);
         }
 
         private void ResolveSpell(Spell spell)
@@ -590,14 +753,14 @@ namespace KingdomRhapsody
                     float length = Vector2.Dot(delta, spell.Direction);
                     if (length >= 0 && length <= spell.Card.Range &&
                         (delta - spell.Direction * length).LengthSquared() <= Battlefield.RiftHalfWidth * Battlefield.RiftHalfWidth)
-                        Damage(enemy, enemy.IsPrince ? 45 : spell.Card.Power);
+                        QueueDamage(enemy, enemy.IsPrince ? 45 : spell.Card.Power);
                 }
                 else if (delta.LengthSquared() <= spell.Card.Range * spell.Card.Range)
                 {
                     float damage = spell.Card.Skill == Skill.Thunder
                         ? enemy.Card.Health * (enemy.IsPrince ? .01f : spell.Card.Power)
                         : (enemy.IsPrince ? 60 : spell.Card.Power);
-                    Damage(enemy, damage);
+                    QueueDamage(enemy, damage);
                 }
             }
             if (spell.Card.Skill == Skill.Rift)
@@ -609,8 +772,8 @@ namespace KingdomRhapsody
 
         private void Damage(BattleUnit unit, float amount, bool pierce = false)
         {
-            if (!unit.Alive)
-                return;
+            unit.LastHitTick = Tick;
+            PresentationChanged = true;
             if (!pierce && unit.Shield > 0)
             {
                 float absorbed = Math.Min(unit.Shield, amount);
@@ -620,6 +783,7 @@ namespace KingdomRhapsody
                 {
                     unit.ShieldReady = Tick + 5 * TickRate;
                     StartStatus(unit, BattlePose.ShieldBreak);
+                    AddEffect(EffectKind.ShieldBreak, unit.Position, unit.Position, 12, 0, Skill.Shield);
                 }
             }
 
@@ -634,9 +798,10 @@ namespace KingdomRhapsody
         private void StartStatus(BattleUnit unit, BattlePose pose)
         {
             CancelAction(unit);
-            int duration = ToTicks(getTiming(unit.Card.Id, pose).Length);
+            int duration = getTiming(unit.Card.Id, pose).DurationTicks;
             unit.StatusEnd = Tick + duration;
             unit.SetPose(pose, Tick, duration);
+            PresentationChanged = true;
         }
 
         private static void Heal(BattleUnit unit, float amount)
@@ -673,10 +838,20 @@ namespace KingdomRhapsody
                     float distance = delta.Length();
                     Vector2 axis = distance > .0001f ? delta / distance : Vector2.UnitX;
                     float push = gap - distance;
+                    Vector2 previousA = a.Position, previousB = b.Position;
                     if (!a.IsPrince)
                         a.Position = Constrain(a, a.Position - axis * (b.IsPrince ? push : push * .5f));
                     if (!b.IsPrince)
                         b.Position = Constrain(b, b.Position + axis * (a.IsPrince ? push : push * .5f));
+                    if (a.IsPrince || b.IsPrince)
+                        continue;
+
+                    float appliedA = Vector2.Dot(previousA - a.Position, axis);
+                    float appliedB = Vector2.Dot(b.Position - previousB, axis);
+                    if (appliedA < push * .5f)
+                        b.Position = Constrain(b, b.Position + axis * (push * .5f - appliedA));
+                    if (appliedB < push * .5f)
+                        a.Position = Constrain(a, a.Position - axis * (push * .5f - appliedB));
                 }
             }
         }
@@ -730,11 +905,15 @@ namespace KingdomRhapsody
         {
             float a = Prince(0).Health, b = Prince(1).Health;
             if (a == 0 || b == 0 || Elapsed >= DurationTicks)
-                Winner = Math.Abs(a - b) < .01f ? Draw : (a > b ? 0 : 1);
+                Winner = a == b ? Draw : (a > b ? 0 : 1);
         }
 
-        private void AddEffect(EffectKind kind, Vector2 origin, Vector2 target, int duration, float radius, Skill skill) =>
-            effects.Add(new BattleEffect(kind, origin, target, Tick, Tick + duration, radius, skill));
+        private void AddEffect(EffectKind kind, Vector2 origin, Vector2 target, int duration, float radius,
+            Skill skill, string trackingKey = null)
+        {
+            effects.Add(new BattleEffect(++nextEffectId, kind, origin, target, Tick, Tick + duration, radius, skill, trackingKey));
+            PresentationChanged = true;
+        }
 
         private static bool Within(Vector2 a, Vector2 b, float range) => Vector2.DistanceSquared(a, b) <= range * range;
         private static float ContactDistance(BattleUnit a, BattleUnit b) =>

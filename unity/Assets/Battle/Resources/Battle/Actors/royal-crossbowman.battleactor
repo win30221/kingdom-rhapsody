@@ -32,7 +32,63 @@
       "fps": 16,
       "loop": false,
       "cue": 6,
-      "sourceHash": "b2a964b9caf1663154e3abec1181149d12cae4231a37abbbfd52fd1d846cfea8"
+      "sourceHash": "b2a964b9caf1663154e3abec1181149d12cae4231a37abbbfd52fd1d846cfea8",
+      "erase": [
+        {
+          "row": 1,
+          "first": 6,
+          "count": 1,
+          "x": 167,
+          "y": 0,
+          "width": 89,
+          "height": 256
+        },
+        {
+          "row": 2,
+          "first": 6,
+          "count": 1,
+          "x": 181,
+          "y": 0,
+          "width": 75,
+          "height": 256
+        },
+        {
+          "row": 3,
+          "first": 6,
+          "count": 1,
+          "x": 165,
+          "y": 0,
+          "width": 91,
+          "height": 256
+        },
+        {
+          "row": 5,
+          "first": 6,
+          "count": 1,
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 256
+        },
+        {
+          "row": 6,
+          "first": 6,
+          "count": 1,
+          "x": 0,
+          "y": 0,
+          "width": 73,
+          "height": 256
+        },
+        {
+          "row": 7,
+          "first": 6,
+          "count": 1,
+          "x": 0,
+          "y": 0,
+          "width": 90,
+          "height": 256
+        }
+      ]
     }
   ]
 }

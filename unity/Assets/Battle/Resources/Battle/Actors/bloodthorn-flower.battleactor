@@ -23,7 +23,8 @@
       "fps": 16,
       "loop": true,
       "cue": 0,
-      "sourceHash": "57ae88460a6536c08c0c6c8e09b816905c4cbc21455832d2e2381e27f90a7edd"
+      "sourceHash": "57ae88460a6536c08c0c6c8e09b816905c4cbc21455832d2e2381e27f90a7edd",
+      "edgeAlpha": 124
     },
     {
       "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Lash.png",
@@ -32,7 +33,27 @@
       "fps": 16,
       "loop": false,
       "cue": 6,
-      "sourceHash": "c5b63bdb98543c8925ea2c18657030dcd25d194126465a7b8c48aa754c48ab9c"
+      "sourceHash": "c5b63bdb98543c8925ea2c18657030dcd25d194126465a7b8c48aa754c48ab9c",
+      "erase": [
+        {
+          "row": 0,
+          "first": 6,
+          "count": 2,
+          "x": 143,
+          "y": 108,
+          "width": 113,
+          "height": 148
+        },
+        {
+          "row": 0,
+          "first": 8,
+          "count": 2,
+          "x": 170,
+          "y": 135,
+          "width": 86,
+          "height": 121
+        }
+      ]
     },
     {
       "path": "character-sprites/bloodthorn-flower/BloodthornFlower_Bloom.png",
@@ -41,7 +62,27 @@
       "fps": 16,
       "loop": false,
       "cue": 6,
-      "sourceHash": "882b62c5b589d3f67f583d382350caa353c1825c13da271b75d05f16b79d1aa3"
+      "sourceHash": "882b62c5b589d3f67f583d382350caa353c1825c13da271b75d05f16b79d1aa3",
+      "erase": [
+        {
+          "row": 0,
+          "first": 6,
+          "count": 2,
+          "x": 143,
+          "y": 108,
+          "width": 113,
+          "height": 148
+        },
+        {
+          "row": 0,
+          "first": 8,
+          "count": 2,
+          "x": 170,
+          "y": 135,
+          "width": 86,
+          "height": 121
+        }
+      ]
     }
   ]
 }
