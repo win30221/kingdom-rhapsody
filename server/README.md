@@ -1,6 +1,16 @@
 # Kingdom Rhapsody 1v1 伺服器
 
-需要 Go 1.23 以上及 .NET 8 SDK。從倉庫根目錄執行下列命令，Linux、macOS 和 Windows PowerShell 使用同一組相對路徑。
+需要 Go 1.23 以上、可編譯 `net8.0` 的 .NET SDK，以及執行工作程序所需的 .NET 8 Runtime。
+
+在 Windows PowerShell 從倉庫根目錄執行。
+
+```powershell
+.\server\run.ps1
+```
+
+腳本會先編譯 Release 版 `battle-worker`，成功後啟動 Go 服務。保留執行中的 PowerShell 視窗，按 Ctrl+C 停止服務。
+
+在 Linux 或 macOS，從倉庫根目錄執行。
 
 ```sh
 dotnet build -c Release server/battle-worker/BattleWorker.csproj
@@ -8,7 +18,9 @@ cd server
 go run .
 ```
 
-在同一台電腦開啟兩個 Unity 客戶端，從大廳進入「出戰」→「雙人對戰」，兩邊都填 `http://127.0.0.1:18120`。其中一端可用 Unity Editor，另一端使用相同提交的獨立 Player。需要跨區域網路時，由主機執行 `go run . -http 0.0.0.0:18120`，兩邊填主機的區域網路網址。用 `/healthz` 檢查 Go 行程。
+在同一台電腦開啟兩個 Unity 客戶端，從大廳進入「出戰」→「雙人對戰」，兩邊都填 `http://127.0.0.1:18120`。其中一端可用 Unity Editor，另一端使用相同提交的獨立 Player。用 `/healthz` 檢查 Go 行程。
+
+用同一個區域網路上的兩台電腦測試時，Windows 主機可從倉庫根目錄執行 `.\server\run.ps1 -http 0.0.0.0:18120`。手動啟動時則在 `server/` 執行 `go run . -http 0.0.0.0:18120`。兩邊遊戲都填主機的區域網路網址。
 
 WebGL 成品會包含 `StreamingAssets/KingdomRhapsody/transport.js`，由遊戲頁面同源載入。可用 `-web /path/to/web-build` 同源提供 Unity 成品和 WebSocket。若將 Web 成品與伺服器放在不同網域，用 `-origins https://web.example.com` 授權遊戲頁面的來源，並由 HTTPS 反向代理轉發 `/ws`。本機預設只監聽迴圈位址。
 
