@@ -25,6 +25,9 @@ namespace KingdomRhapsody
     {
         internal const float Tile = 27.5f;
         internal const float Width = Battlefield.Columns * Tile, Height = Battlefield.Rows * Tile;
+        private static readonly Rect HazardArea = new Rect(
+            Width / 2 - Battlefield.HazardHalfWidth * Tile, Height / 2 - Battlefield.HazardHalfHeight * Tile,
+            2 * Battlefield.HazardHalfWidth * Tile, 2 * Battlefield.HazardHalfHeight * Tile);
         private static readonly Color Friendly = new Color32(88, 193, 244, 255);
         private static readonly Color Enemy = new Color32(244, 120, 109, 255);
         private static readonly Color Crystal = new Color32(149, 224, 243, 255);
@@ -49,7 +52,7 @@ namespace KingdomRhapsody
                 float size = (model ? model.worldSize : 2f) * Tile;
                 var mark = BattleView.Box(actor.IsPrince || actor.IsGuard ? -17 : -11, -5,
                     actor.IsPrince || actor.IsGuard ? 34 : 22, 10);
-                mark.style.backgroundColor = Alpha(actor.Seat == ownSeat ? Friendly : Enemy, .35f);
+                mark.style.backgroundColor = Alpha(actor.Seat == ownSeat ? Friendly : Enemy, .55f);
                 BattleView.Round(mark, 7);
                 Root.Add(mark);
                 var ground = BattleView.Box(-size * .30f, -size * .055f, size * .60f, size * .14f);
@@ -109,8 +112,7 @@ namespace KingdomRhapsody
             this.shadow = shadow;
             name = "battlefield";
             style.overflow = Overflow.Hidden;
-            style.backgroundColor = (Color)new Color32(54, 63, 44, 255);
-            generateVisualContent += context => DrawGround(context.painter2D);
+            generateVisualContent += context => DrawLandmarks(context.painter2D);
 
             grid = AddLayer("deployment-grid");
             grid.generateVisualContent += context => DrawGrid(context.painter2D);
@@ -300,57 +302,18 @@ namespace KingdomRhapsody
             return new Vector2((point.X + Battlefield.HalfWidth) * Tile, (Battlefield.HalfHeight - point.Y) * Tile);
         }
 
-        private void DrawGround(Painter2D painter)
+        private void DrawLandmarks(Painter2D painter)
         {
-            for (int row = 0; row < Battlefield.Rows; row++)
-            {
-                for (int column = 0; column < Battlefield.Columns; column++)
-                {
-                    bool path = column is 1 or 2 or 3 or 4 or 7 or 8 or 9 or 10 or 13 or 14 or 15 or 16;
-                    bool royal = row < 5 || row >= 27;
-                    float noise = ((column * 47 + row * 103 + row * column * 13) % 19) / 18f;
-                    Color dark = royal ? new Color32(67, 68, 60, 255) : path ? new Color32(79, 77, 61, 255) : new Color32(46, 64, 47, 255);
-                    Color light = royal ? new Color32(85, 85, 76, 255) : path ? new Color32(113, 107, 83, 255) : new Color32(61, 80, 56, 255);
-                    Rect tile = new Rect(column * Tile, row * Tile, Tile - (path || royal ? .7f : 0), Tile - (path || royal ? .6f : 0));
-                    Rectangle(painter, tile, Color.Lerp(dark, light, noise));
-                }
-            }
-
-            Rectangle(painter, new Rect(0, 0, Width, Tile * 5), Alpha(Enemy, .065f));
-            Rectangle(painter, new Rect(0, Tile * 27, Width, Tile * 5), Alpha(Friendly, .075f));
-            Rectangle(painter, new Rect(Tile * 6, Tile * 14, Tile * 6, Tile * 4), new Color32(94, 64, 73, 255));
-
-            for (int lane = 1; lane < 3; lane++)
-            {
-                float x = Tile * lane * 6;
-                Line(painter, new Vector2(x, 0), new Vector2(x, Height), new Color32(195, 178, 139, 58), 1);
-            }
-
+            Border(painter, HazardArea, Alpha(Gold, .45f), 1.5f);
             for (int seat = 0; seat < 2; seat++)
             {
                 Color team = seat == (match?.Seat ?? 0) ? Friendly : Enemy;
-                painter.BeginPath();
-                painter.strokeColor = Alpha(team, .40f);
-                painter.lineWidth = 1.45f;
-                painter.MoveTo(ToBoard(Battlefield.Patrol(seat, 0)));
-                for (float segment = .25f; segment <= 29.375f; segment += .25f)
-                    painter.LineTo(ToBoard(Battlefield.Patrol(seat, segment)));
-                painter.ClosePath();
-                painter.Stroke();
                 for (int side = 0; side < 2; side++)
                 {
                     Vector2 home = ToBoard(Battlefield.GuardHome(seat, side));
-                    Circle(painter, home, 15, new Color32(29, 39, 40, 160), true);
-                    Circle(painter, home, 15, Alpha(team, .75f), false, 1.5f);
+                    Circle(painter, home, 15, Alpha(team, .20f), true);
+                    Circle(painter, home, 15, Alpha(team, .88f), false, 1.5f);
                 }
-            }
-
-            for (int i = 0; i < 7; i++)
-            {
-                float x = Width * .5f + (i - 3) * 16, y = Height * .5f;
-                Line(painter, new Vector2(x - 11, y - 37), new Vector2(x + 2, y - 14), new Color32(229, 143, 169, 130), 1.6f);
-                Line(painter, new Vector2(x + 2, y - 14), new Vector2(x - 4, y + 6), new Color32(229, 143, 169, 160), 1.6f);
-                Line(painter, new Vector2(x - 4, y + 6), new Vector2(x + 12, y + 34), new Color32(229, 143, 169, 130), 1.6f);
             }
         }
 
@@ -364,7 +327,7 @@ namespace KingdomRhapsody
                     if (!BattleSession.MayDeploy(lastTerritory, match.Seat, col, row))
                         continue;
                     Color color = BattleSession.MayDeploy(lastTerritory, 1 - match.Seat, col, row)
-                        ? new Color32(234, 176, 107, 99) : new Color32(83, 199, 228, 79);
+                        ? new Color32(249, 188, 84, 132) : new Color32(49, 168, 237, 135);
                     Vector2 at = ToBoard(Battlefield.Cell(col, row));
                     Rectangle(painter, new Rect(at.x - Tile / 2 + 1, at.y - Tile / 2 + 1, Tile - 2, Tile - 2), color);
                 }
@@ -398,12 +361,11 @@ namespace KingdomRhapsody
         {
             if (match == null || playback == null)
                 return;
-            Rect hazard = new Rect(6 * Tile, 14 * Tile, 6 * Tile, 4 * Tile);
             if (playback.Visible.HazardWarning)
             {
                 float alpha = .25f + .19f * Mathf.Sin((float)effectTick * .5f);
-                Rectangle(painter, hazard, Alpha(Gold, alpha));
-                Border(painter, hazard, Alpha(Gold, .94f), 2);
+                Rectangle(painter, HazardArea, Alpha(Gold, alpha));
+                Border(painter, HazardArea, Alpha(Gold, .94f), 2);
             }
 
             IReadOnlyList<BattleEffect> activeEffects = match.Effects;
@@ -417,8 +379,8 @@ namespace KingdomRhapsody
                 switch (fx.Kind)
                 {
                     case EffectKind.Hazard:
-                        Rectangle(painter, hazard, Alpha(color, color.a * .64f));
-                        Border(painter, hazard, color, 3);
+                        Rectangle(painter, HazardArea, Alpha(color, color.a * .64f));
+                        Border(painter, HazardArea, color, 3);
                         break;
                     case EffectKind.MeteorWarning:
                         Circle(painter, target, fx.Radius * Tile, Alpha(Gold, .72f), false, 2);

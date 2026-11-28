@@ -11,6 +11,8 @@ namespace KingdomRhapsody
     {
         private const float Width = 540, Height = 1070, Left = (Width - BattlefieldView.Width) / 2;
         private const float BoardTop = 56, DockTop = BoardTop + BattlefieldView.Height + 7;
+        // Inner floor in the 941 × 1672 Rift Courts texture. Walls are outside the board.
+        private static readonly Rect MapFloor = new Rect(60f / 941, 80f / 1672, 821f / 941, 1512f / 1672);
         private static readonly Color Gold = new Color32(255, 221, 158, 255);
         private static readonly Color Ivory = new Color32(255, 248, 224, 255);
         private static readonly Color Cyan = new Color32(133, 225, 244, 255);
@@ -72,22 +74,13 @@ namespace KingdomRhapsody
             if (font)
                 root.style.unityFontDefinition = FontDefinition.FromFont(font);
 
-            var backdrop = Box(0, 0, 0, 0);
-            FillRoot(backdrop);
-            Image(backdrop, Get("backgrounds/castle-courtyard"), ScaleMode.ScaleAndCrop);
-            backdrop.style.opacity = .18f;
-            root.Add(backdrop);
-
             viewport = Box(0, 0, 0, 0);
             viewport.style.overflow = Overflow.Hidden;
             root.Add(viewport);
             stage = Box(0, 0, Width, Height);
             viewport.Add(stage);
             root.RegisterCallback<GeometryChangedEvent>(_ => Layout(true));
-            var bezel = Box(Left - 3, BoardTop - 3, BattlefieldView.Width + 6, BattlefieldView.Height + 6);
-            bezel.style.backgroundColor = (Color)new Color32(199, 157, 94, 255);
-            Round(bezel, 5);
-            stage.Add(bezel);
+            AddMapArt();
             board = new BattlefieldView(art, Get("frames/ground-shadow"));
             Place(board, Left, BoardTop, BattlefieldView.Width, BattlefieldView.Height);
             stage.Add(board);
@@ -106,6 +99,8 @@ namespace KingdomRhapsody
             });
 
             header = Box(Left, 4, BattlefieldView.Width, 47);
+            header.style.backgroundColor = Ink;
+            Round(header, 6);
             stage.Add(header);
             MakePrinceMeter(header, 1, 0, "敵方王子", Coral);
             MakePrinceMeter(header, 0, BattlefieldView.Width - 162, "我方王子", Cyan);
@@ -121,6 +116,8 @@ namespace KingdomRhapsody
             Round(hazard, 12);
 
             dock = Box(Left, DockTop, BattlefieldView.Width, 121);
+            dock.style.backgroundColor = Ink;
+            Round(dock, 6);
             stage.Add(dock);
             energyValue = Text(dock, "", 0, 0, 130, 24, 16, Cyan, TextAnchor.MiddleLeft);
             var energyTrack = Box(0, 25, 130, 5);
@@ -414,6 +411,16 @@ namespace KingdomRhapsody
             princeHealth[seat] = Text(track, "", 0, 0, 162, 21, 15, Ivory);
         }
 
+        private void AddMapArt()
+        {
+            float width = BattlefieldView.Width / MapFloor.width;
+            float height = BattlefieldView.Height / MapFloor.height;
+            var map = Box(Left - width * MapFloor.x, BoardTop - height * MapFloor.y, width, height);
+            map.name = "rift-courts-map";
+            Image(map, Resources.Load<Sprite>("Battle/Maps/RiftCourts"), ScaleMode.StretchToFill);
+            stage.Add(map);
+        }
+
         private CardTile MakeCard(VisualElement parent, float x, bool isNext)
         {
             var button = new Button { name = isNext ? "next-card" : "battle-card" };
@@ -470,8 +477,7 @@ namespace KingdomRhapsody
             if (match.Tick >= messageEnd)
             {
                 hint.style.color = Ivory;
-                Write(hint, selected == null ? "點選或拖曳手牌" : selected.Card.Skill == Skill.Rift ? "在戰場拖曳定向" :
-                    selected.Card.IsSpell ? "放開施法" : "放開部署");
+                Write(hint, DeploymentHint());
             }
             for (int i = 0; i < hand.Length; i++)
             {
@@ -481,6 +487,17 @@ namespace KingdomRhapsody
                 hand[i].Button.style.opacity = match.Live && match.Energy + 1e-8 >= card.Cost ? 1f : .58f;
             }
             PaintCard(next, match.NextCard, true);
+        }
+
+        private string DeploymentHint()
+        {
+            if (dragAims.Count != 0)
+                return "拖入戰場後放開";
+            if (selected == null)
+                return "點手牌，再點戰場";
+            if (selected.Card.Skill == Skill.Rift)
+                return "在戰場拖曳定向";
+            return selected.Card.IsSpell ? "點戰場施法" : "點部署格下兵";
         }
 
         private void PaintCard(CardTile tile, BattleCard card, bool isNext)

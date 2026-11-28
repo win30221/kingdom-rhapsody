@@ -10,6 +10,7 @@ namespace KingdomRhapsody
         internal const float HalfWidth = Columns / 2f, HalfHeight = Rows / 2f;
         internal const float GuardDetection = 6, GuardLeash = 4.5f;
         internal const float HazardInterval = 8, HazardWarning = 1.5f;
+        internal const float HazardHalfWidth = 3, HazardHalfHeight = 2;
         internal const float RiftHalfWidth = .75f;
 
         private static readonly Vector2[] patrol = MakePatrol();
@@ -43,7 +44,8 @@ namespace KingdomRhapsody
             return Lane(column) == 0 && leftUnlocked || Lane(column) == 2 && rightUnlocked;
         }
 
-        internal static bool InHazard(Vector2 point) => Math.Abs(point.X) <= 3 && Math.Abs(point.Y) <= 2;
+        internal static bool InHazard(Vector2 point) =>
+            Math.Abs(point.X) <= HazardHalfWidth && Math.Abs(point.Y) <= HazardHalfHeight;
 
         internal static Vector2 GuardHome(int seat, int side) => new(side == 0 ? -7.5f : 7.5f, seat == 0 ? -11.5f : 11.5f);
 
