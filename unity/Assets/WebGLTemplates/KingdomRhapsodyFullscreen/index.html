@@ -17,6 +17,8 @@
     }
 
     #unity-canvas {
+      position: fixed;
+      inset: 0;
       display: block;
       width: 100%;
       height: 100%;
@@ -32,40 +34,15 @@
       transform: translate(-50%, -50%);
       text-align: center;
     }
-
-    #unity-fullscreen {
-      position: fixed;
-      right: 12px;
-      bottom: 12px;
-      padding: 8px 12px;
-      border: 1px solid #ffffff50;
-      border-radius: 6px;
-      background: #0f1a28d9;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-    }
-
-    #unity-fullscreen:hover {
-      background: #25354a;
-    }
-
-    @media (max-aspect-ratio: 3/4) {
-      #unity-fullscreen {
-        display: none;
-      }
-    }
   </style>
 </head>
 <body>
   <canvas id="unity-canvas" tabindex="-1" aria-label="王國狂想"></canvas>
   <div id="unity-status" role="status">載入中</div>
-  <button id="unity-fullscreen" type="button" hidden>全螢幕</button>
 
   <script>
     const canvas = document.getElementById("unity-canvas");
     const statusMessage = document.getElementById("unity-status");
-    const fullscreenButton = document.getElementById("unity-fullscreen");
     const build = "Build/";
     const config = {
       dataUrl: build + {{{ JSON.stringify(DATA_FILENAME) }}},
@@ -99,14 +76,10 @@
     loader.onerror = () => showError("Could not load " + loader.src);
     loader.onload = async () => {
       try {
-        const instance = await createUnityInstance(canvas, config, (progress) => {
+        await createUnityInstance(canvas, config, (progress) => {
           statusMessage.textContent = "載入中 " + Math.round(progress * 100) + "%";
         });
         statusMessage.hidden = true;
-        if (document.fullscreenEnabled) {
-          fullscreenButton.onclick = () => instance.SetFullscreen(1);
-          fullscreenButton.hidden = false;
-        }
       } catch (error) {
         showError(error);
       }
