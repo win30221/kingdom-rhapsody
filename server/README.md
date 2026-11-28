@@ -18,11 +18,18 @@ cd server
 go run .
 ```
 
-在同一台電腦開啟兩個 Unity 客戶端，從大廳進入「出戰」→「雙人對戰」，兩邊都填 `http://127.0.0.1:18120`。其中一端可用 Unity Editor，另一端使用相同提交的獨立 Player。用 `/healthz` 檢查 Go 行程。
+Unity Editor 和桌面 Player 預設使用 `http://127.0.0.1:18120`。在同一台電腦開啟兩個同版本客戶端，從大廳進入「出戰」→「雙人對戰」即可配對。用 `/healthz` 檢查 Go 服務。
 
-用同一個區域網路上的兩台電腦測試時，Windows 主機可從倉庫根目錄執行 `.\server\run.ps1 -http 0.0.0.0:18120`。手動啟動時則在 `server/` 執行 `go run . -http 0.0.0.0:18120`。兩邊遊戲都填主機的區域網路網址。
+WebGL 預設連遊戲頁面的同一個來源，傳輸模組由成品的 `StreamingAssets/KingdomRhapsody/transport.js` 載入。用 `-web` 指定含 `index.html` 的成品資料夾，Go 即可同源提供遊戲與 WebSocket。下例從倉庫根目錄啟動。
 
-WebGL 成品會包含 `StreamingAssets/KingdomRhapsody/transport.js`，由遊戲頁面同源載入。可用 `-web /path/to/web-build` 同源提供 Unity 成品和 WebSocket。若將 Web 成品與伺服器放在不同網域，用 `-origins https://web.example.com` 授權遊戲頁面的來源，並由 HTTPS 反向代理轉發 `/ws`。本機預設只監聽迴圈位址。
+```powershell
+$webBuild = (Resolve-Path .\unity\Builds\WebGL).Path
+.\server\run.ps1 -web $webBuild
+```
+
+兩個瀏覽器視窗都開啟 `http://127.0.0.1:18120/`，再直接選「雙人對戰」。在同一個區網測試時，主機可加上 `-http 0.0.0.0:18120`，兩台電腦都用主機的區網網址開啟瀏覽器版。
+
+需要固定連到其他主機時，在 Unity 開啟 `Assets/Scenes/Lobby.unity`，於 `PortraitLobby` 元件的 **Battle Server Url** 設定伺服器網址後建置。Web 與伺服器分開部署時，Go 服務加上 `-origins https://web.example.com` 授權遊戲頁面來源，並由 HTTPS 反向代理轉發 `/ws`。
 
 線上對戰目前使用協定第 2 版。更新時重新建置 Unity 客戶端及 `battle-worker`，並重啟 Go 服務。
 

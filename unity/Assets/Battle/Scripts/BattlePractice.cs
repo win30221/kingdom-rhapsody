@@ -9,7 +9,6 @@ namespace KingdomRhapsody
     {
         private const double StepSeconds = 1d / BattleMatch.TickRate;
         private const int SnapshotInterval = BattleMatch.TickRate / BattleMatch.SnapshotRate;
-        private const string ServerPreference = "kingdom-rhapsody.battle.server";
 
         private readonly BattleArt art = new BattleArt();
         private readonly BattlePresentation presentation = new BattlePresentation();
@@ -19,7 +18,6 @@ namespace KingdomRhapsody
         private BattleView view;
         private Label menuStatus;
         private Button onlineButton, practiceButton;
-        private TextField address;
         private PracticeSession practice;
         private OnlineBattleSession online;
         private BattleSession session;
@@ -32,7 +30,7 @@ namespace KingdomRhapsody
         private bool paused, closing, resultShown;
         private string endpoint;
 
-        internal void Open(BattleLoadout selected, Font font, Action close, Action<string> playCue)
+        internal void Open(BattleLoadout selected, Font font, string battleServerUrl, Action close, Action<string> playCue)
         {
             loadout = selected;
             this.font = font;
@@ -42,17 +40,9 @@ namespace KingdomRhapsody
             panel.sortingOrder = 10;
             document = gameObject.AddComponent<UIDocument>();
             document.panelSettings = panel;
-            endpoint = PlayerPrefs.GetString(ServerPreference, DefaultEndpoint());
+            string pageUrl = Application.platform == RuntimePlatform.WebGLPlayer ? Application.absoluteURL : null;
+            endpoint = OnlineBattleSession.ResolveAddress(battleServerUrl, pageUrl);
             ShowMenu();
-        }
-
-        private static string DefaultEndpoint()
-        {
-            if (Application.platform == RuntimePlatform.WebGLPlayer &&
-                Uri.TryCreate(Application.absoluteURL, UriKind.Absolute, out Uri location) &&
-                (location.Scheme == "http" || location.Scheme == "https"))
-                return location.GetLeftPart(UriPartial.Authority);
-            return "http://127.0.0.1:18120";
         }
 
         private void ShowMenu(string detail = "")
@@ -88,10 +78,7 @@ namespace KingdomRhapsody
             title.style.color = (Color)new Color32(255, 221, 158, 255);
             title.style.marginBottom = 16;
             card.Add(title);
-            address = new TextField("伺服器") { value = endpoint, maxLength = 350 };
-            address.style.marginBottom = 12;
-            card.Add(address);
-            onlineButton = AddButton(card, "雙人對戰", () => BeginOnline(address.value), true);
+            onlineButton = AddButton(card, "雙人對戰", BeginOnline, true);
             practiceButton = AddButton(card, "本機對練", BeginPractice, false);
             AddButton(card, "回大廳", Close, false);
             menuStatus = new Label(detail);
@@ -122,23 +109,14 @@ namespace KingdomRhapsody
             Restart();
         }
 
-        private void BeginOnline(string server)
+        private void BeginOnline()
         {
-            if (!OnlineBattleSession.TryEndpoint(server, out _))
-            {
-                menuStatus.text = "請輸入有效的伺服器網址";
-                return;
-            }
-            endpoint = server.Trim();
-            PlayerPrefs.SetString(ServerPreference, endpoint);
-            PlayerPrefs.Save();
             online?.Dispose();
             var connection = new OnlineBattleSession();
             online = connection;
             menuStatus.text = "正在連線";
             onlineButton.SetEnabled(false);
             practiceButton.SetEnabled(false);
-            address.SetEnabled(false);
 
             connection.Status += status =>
             {
@@ -197,7 +175,7 @@ namespace KingdomRhapsody
             if (online != null)
             {
                 ShowMenu();
-                BeginOnline(endpoint);
+                BeginOnline();
                 return;
             }
             var match = new BattleMatch(loadout, art.Timing);

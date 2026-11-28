@@ -39,6 +39,18 @@ namespace KingdomRhapsody
 
         internal override double Energy => pending.Energy(state?.energy ?? 0);
 
+        internal static string ResolveAddress(string configuredUrl, string pageUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(configuredUrl))
+                return configuredUrl.Trim();
+
+            if (Uri.TryCreate(pageUrl, UriKind.Absolute, out Uri page) &&
+                (page.Scheme == Uri.UriSchemeHttp || page.Scheme == Uri.UriSchemeHttps))
+                return page.GetLeftPart(UriPartial.Authority);
+
+            return "http://127.0.0.1:18120";
+        }
+
         internal void Connect(string address, BattleLoadout loadout)
         {
             if (!TryEndpoint(address, out Uri endpoint))

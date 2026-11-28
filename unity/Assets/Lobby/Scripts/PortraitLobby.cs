@@ -118,6 +118,8 @@ namespace KingdomRhapsody
         private Card[] guardOptions;
         private Card[] deckCards;
         private Card[] reserveCards;
+        [SerializeField, Tooltip("Fixed matchmaking URL. Leave empty to use the Web page origin or the local desktop server.")]
+        private string battleServerUrl = "";
         // Editor/development-only layout fixtures. These never enter the roster,
         // loadout, save data, or battle selection.
         [SerializeField, Range(0, 100)] private int collectionDemoCount = 21;
@@ -840,7 +842,7 @@ namespace KingdomRhapsody
             canvas.gameObject.SetActive(false);
             EventSystem.current?.SetSelectedGameObject(null);
             Font battleFont = Resources.Load<Font>("Lobby/Fonts/KingdomUiTCFull") ?? font;
-            practice.Open(selected, battleFont, ReturnFromPractice, PlayBattleCue);
+            practice.Open(selected, battleFont, battleServerUrl, ReturnFromPractice, PlayBattleCue);
         }
 
         private void ReturnFromPractice()
